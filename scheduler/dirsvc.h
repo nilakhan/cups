@@ -1,12 +1,10 @@
 /*
  * Directory services definitions for the CUPS scheduler.
  *
- * Copyright © 2021 by OpenPrinting.
- * Copyright © 2007-2017 by Apple Inc.
- * Copyright © 1997-2007 by Easy Software Products, all rights reserved.
+ * Copyright 2007-2017 by Apple Inc.
+ * Copyright 1997-2007 by Easy Software Products, all rights reserved.
  *
- * Licensed under Apache License v2.0.  See the file "LICENSE" for more
- * information.
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more information.
  */
 
 /*
@@ -14,7 +12,9 @@
  */
 
 #define BROWSE_DNSSD	1		/* DNS Service Discovery (aka Bonjour) */
-#define BROWSE_ALL	1		/* All protocols */
+#define BROWSE_SMB	2		/* SMB/Samba */
+#define BROWSE_LPD	4		/* LPD via xinetd or launchd */
+#define BROWSE_ALL	7		/* All protocols */
 
 
 /*
@@ -28,7 +28,7 @@ VAR int			Browsing	VALUE(TRUE),
 			BrowseLocalProtocols
 					VALUE(BROWSE_ALL);
 					/* Protocols to support for local printers */
-#ifdef HAVE_DNSSD
+#if defined(HAVE_DNSSD) || defined(HAVE_AVAHI)
 VAR char		*DNSSDComputerName VALUE(NULL),
 					/* Computer/server name */
 			*DNSSDHostName	VALUE(NULL),
@@ -41,7 +41,7 @@ VAR int			DNSSDPort	VALUE(0);
 					/* Port number to register */
 VAR cups_array_t	*DNSSDPrinters	VALUE(NULL);
 					/* Printers we have registered */
-#  ifdef HAVE_MDNSRESPONDER
+#  ifdef HAVE_DNSSD
 VAR DNSServiceRef	DNSSDMaster	VALUE(NULL);
 					/* Master DNS-SD service reference */
 #  else /* HAVE_AVAHI */
@@ -49,10 +49,15 @@ VAR AvahiThreadedPoll	*DNSSDMaster	VALUE(NULL);
 					/* Master polling interface for Avahi */
 VAR AvahiClient		*DNSSDClient	VALUE(NULL);
 					/* Client information */
-#  endif /* HAVE_MDNSRESPONDER */
+#  endif /* HAVE_DNSSD */
 VAR cupsd_srv_t		WebIFSrv	VALUE(NULL);
 					/* Service reference for the web interface */
-#endif /* HAVE_DNSSD */
+#endif /* HAVE_DNSSD || HAVE_AVAHI */
+
+VAR char		*LPDConfigFile	VALUE(NULL),
+					/* LPD configuration file */
+			*SMBConfigFile	VALUE(NULL);
+					/* SMB configuration file */
 
 
 /*
@@ -63,6 +68,6 @@ extern void	cupsdDeregisterPrinter(cupsd_printer_t *p, int removeit);
 extern void	cupsdRegisterPrinter(cupsd_printer_t *p);
 extern void	cupsdStartBrowsing(void);
 extern void	cupsdStopBrowsing(void);
-#ifdef HAVE_DNSSD
+#if defined(HAVE_DNSSD) || defined(HAVE_AVAHI)
 extern void	cupsdUpdateDNSSDName(void);
-#endif /* HAVE_DNSSD */
+#endif /* HAVE_DNSSD || HAVE_AVAHI */

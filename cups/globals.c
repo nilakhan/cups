@@ -1,7 +1,6 @@
 /*
  * Global variable access routines for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
  * Copyright © 2007-2019 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products, all rights reserved.
  *
@@ -363,9 +362,9 @@ cups_globals_free(_cups_globals_t *cg)	/* I - Pointer to global data */
 
   httpClose(cg->http);
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   _httpFreeCredentials(cg->tls_credentials);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   cupsFileClose(cg->stdio_files[0]);
   cupsFileClose(cg->stdio_files[1]);

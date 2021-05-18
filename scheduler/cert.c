@@ -83,7 +83,7 @@ cupsdAddCert(int        pid,		/* I - Process ID */
 
   if (pid == 0)
   {
-#if defined(HAVE_ACL_INIT) && !defined(SUPPORT_SNAPPED_CUPSD)
+#ifdef HAVE_ACL_INIT
     acl_t		acl;		/* ACL information */
     acl_entry_t		entry;		/* ACL entry */
     acl_permset_t	permset;	/* Permissions */
@@ -92,7 +92,7 @@ cupsdAddCert(int        pid,		/* I - Process ID */
 #  endif /* HAVE_MBR_UID_TO_UUID */
     static int		acls_not_supported = 0;
 					/* Only warn once */
-#endif /* HAVE_ACL_INIT && !SUPPORT_SNAPPED_CUPSD */
+#endif /* HAVE_ACL_INIT */
 
 
    /*
@@ -100,18 +100,11 @@ cupsdAddCert(int        pid,		/* I - Process ID */
     */
 
     fchmod(fd, 0440);
-
-    /* ACLs do not work when cupsd is running in a Snap, and certificates
-       need root as group owner to be only accessible for CUPS and not the
-       unprivileged sub-processes */
-#ifdef SUPPORT_SNAPPED_CUPSD
-    fchown(fd, RunUser, 0);
-#else
     fchown(fd, RunUser, SystemGroupIDs[0]);
 
     cupsdLogMessage(CUPSD_LOG_DEBUG2, "cupsdAddCert: NumSystemGroups=%d", NumSystemGroups);
 
-#  ifdef HAVE_ACL_INIT
+#ifdef HAVE_ACL_INIT
     if (NumSystemGroups > 1)
     {
      /*
@@ -121,7 +114,7 @@ cupsdAddCert(int        pid,		/* I - Process ID */
 
       int	j;			/* Looping var */
 
-#    ifdef HAVE_MBR_UID_TO_UUID
+#  ifdef HAVE_MBR_UID_TO_UUID
      /*
       * On macOS, ACLs use UUIDs instead of GIDs...
       */
@@ -150,7 +143,7 @@ cupsdAddCert(int        pid,		/* I - Process ID */
 	acl_set_permset(entry, permset);
       }
 
-#    else
+#  else
      /*
       * POSIX ACLs need permissions for owner, group, other, and mask
       * in addition to the rest of the system groups...
@@ -222,7 +215,7 @@ cupsdAddCert(int        pid,		/* I - Process ID */
 	cupsdLogMessage(CUPSD_LOG_ERROR, "ACL: %s", text);
 	acl_free(text);
       }
-#    endif /* HAVE_MBR_UID_TO_UUID */
+#  endif /* HAVE_MBR_UID_TO_UUID */
 
       if (acl_set_fd(fd, acl))
       {
@@ -237,8 +230,7 @@ cupsdAddCert(int        pid,		/* I - Process ID */
 
       acl_free(acl);
     }
-#  endif /* HAVE_ACL_INIT */
-#endif /* SUPPORT_SNAPPED_CUPSD */
+#endif /* HAVE_ACL_INIT */
 
     RootCertTime = time(NULL);
   }

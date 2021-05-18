@@ -1,5 +1,5 @@
-Credits
-=======
+CREDITS - 2019-08-21
+====================
 
 Few projects are completed by one person, and CUPS is no exception.  We'd like
 to thank the following individuals for their contributions:
@@ -50,5 +50,5 @@ to thank the following individuals for their contributions:
                                      integration.
     Yugami                         - LDAP browsing support.
 
-If we've missed someone, please let us know by filing an issue at
-<https://github.com/openprinting/cups/issues>.
+If I've missed someone, please let me know by sending an email to
+"msweet@apple.com".

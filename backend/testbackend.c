@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include "backend-private.h"
 
 
 /*
@@ -396,7 +395,7 @@ main(int  argc,				/* I - Number of command-line args */
 	  data = ps_data;
 
         write(1, data, strlen(data));
-	backendMessage("DEBUG: START\n");
+	write(2, "DEBUG: START\n", 13);
 	timeout = 60.0;
         while ((bytes = cupsBackChannelRead(buffer, sizeof(buffer),
 	                                    timeout)) > 0)
@@ -404,7 +403,7 @@ main(int  argc,				/* I - Number of command-line args */
 	  write(2, buffer, (size_t)bytes);
 	  timeout = 5.0;
 	}
-	backendMessage("\nDEBUG: END\n");
+	write(2, "\nDEBUG: END\n", 12);
       }
 
       exit(0);

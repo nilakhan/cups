@@ -1,12 +1,10 @@
 /*
  * TLS check program for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
- * Copyright © 2007-2017 by Apple Inc.
- * Copyright © 1997-2006 by Easy Software Products.
+ * Copyright 2007-2017 by Apple Inc.
+ * Copyright 1997-2006 by Easy Software Products.
  *
- * Licensed under Apache License v2.0.  See the file "LICENSE" for more
- * information.
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more information.
  */
 
 /*
@@ -16,7 +14,7 @@
 #include "cups-private.h"
 
 
-#ifndef HAVE_TLS
+#ifndef HAVE_SSL
 int main(void) { puts("Sorry, no TLS support compiled in."); return (1); }
 #else
 
@@ -782,4 +780,4 @@ usage(void)
 
   exit(1);
 }
-#endif /* !HAVE_TLS */
+#endif /* !HAVE_SSL */

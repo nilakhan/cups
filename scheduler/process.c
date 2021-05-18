@@ -744,11 +744,7 @@ cupsdStartProcess(
     if (!RunUser && setgid(Group))
       exit(errno + 100);
 
-#  ifdef SUPPORT_SNAPPED_CUPSD
-    if (!RunUser && setgroups(0, NULL))
-#  else
     if (!RunUser && setgroups(1, &Group))
-#  endif /* SUPPORT_SNAPPED_CUPSD */
       exit(errno + 100);
 
    /*

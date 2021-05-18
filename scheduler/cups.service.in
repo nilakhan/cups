@@ -1,7 +1,7 @@
 [Unit]
 Description=CUPS Scheduler
 Documentation=man:cupsd(8)
-After=network.target nss-user-lookup.target nslcd.service
+After=network.target sssd.service ypbind.service nslcd.service
 Requires=cups.socket
 
 [Service]
@@ -11,4 +11,4 @@ Restart=on-failure
 
 [Install]
 Also=cups.socket cups.path
-WantedBy=@SYSTEMD_WANTED_BY@
+WantedBy=printer.target

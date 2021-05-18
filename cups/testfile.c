@@ -1,7 +1,6 @@
 /*
- * File/directory test program for CUPS.
+ * File test program for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
  * Copyright © 2007-2018 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products.
  *
@@ -16,7 +15,6 @@
 #include "string-private.h"
 #include "debug-private.h"
 #include "file.h"
-#include "dir.h"
 #include <stdlib.h>
 #include <time.h>
 #ifdef _WIN32
@@ -45,7 +43,6 @@ main(int  argc,				/* I - Number of command-line arguments */
      char *argv[])			/* I - Command-line arguments */
 {
   int		status;			/* Exit status */
-  int		i;			/* Looping var */
   char		filename[1024];		/* Filename buffer */
   cups_file_t	*fp;			/* File pointer */
 #ifndef _WIN32
@@ -181,101 +178,6 @@ main(int  argc,				/* I - Number of command-line arguments */
     {
       puts("FAIL");
       status ++;
-    }
-
-   /*
-    * Test directory functions...
-    */
-
-    fputs("\nCreating test directory \"test.d\"...\n", stdout);
-    fputs("mkdir(test.d): ", stdout);
-    if (mkdir("test.d", 0777))
-    {
-      printf("FAIL (%s)\n", strerror(errno));
-      status ++;
-    }
-    else
-    {
-      int		num_files;	// Number of files seen
-      cups_dir_t	*dir;		// Directory pointer
-      cups_dentry_t	*dent;		// Directory entry
-
-      puts("PASS");
-
-      fputs("cupsDirOpen(test.d): ", stdout);
-      if ((dir = cupsDirOpen("test.d")) == NULL)
-      {
-        printf("FAIL (%s)\n", strerror(errno));
-        status ++;
-      }
-      else
-      {
-        puts("PASS");
-        fputs("cupsDirRead: ", stdout);
-        if ((dent = cupsDirRead(dir)) != NULL)
-        {
-          printf("FAIL (Got '%s', expected NULL)\n", dent->filename);
-          status ++;
-        }
-        else
-          puts("PASS");
-
-        cupsDirClose(dir);
-      }
-
-      // Create some files...
-      for (i = 0; i < 10; i ++)
-      {
-        snprintf(filename, sizeof(filename), "test.d/testfile%d.txt", i);
-        printf("cupsFileOpen(%s): ", filename);
-        if ((fp = cupsFileOpen(filename, "w")) == NULL)
-        {
-          printf("FAIL (%s)\n", strerror(errno));
-          status ++;
-          break;
-        }
-        else
-        {
-          puts("PASS");
-          cupsFilePuts(fp, "This is a test.\n");
-          cupsFileClose(fp);
-        }
-      }
-
-      if (i >= 10)
-      {
-	fputs("cupsDirOpen(test.d): ", stdout);
-	if ((dir = cupsDirOpen("test.d")) == NULL)
-	{
-	  printf("FAIL (%s)\n", strerror(errno));
-	  status ++;
-	}
-	else
-	{
-	  puts("PASS");
-	  fputs("cupsDirRead: ", stdout);
-	  for (num_files = 0; (dent = cupsDirRead(dir)) != NULL; num_files ++)
-	    printf("%s ", dent->filename);
-	  if (num_files != 10)
-	  {
-	    printf("FAIL (Got %d files, expected 10)\n", num_files);
-	    status ++;
-	  }
-	  else
-	    puts("PASS");
-
-	  cupsDirClose(dir);
-	}
-      }
-
-      // Cleanup
-      for (i = 0; i < 10; i ++)
-      {
-        snprintf(filename, sizeof(filename), "test.d/testfile%d.txt", i);
-        unlink(filename);
-      }
-
-      rmdir("test.d");
     }
 
    /*

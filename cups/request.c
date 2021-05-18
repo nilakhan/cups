@@ -1,12 +1,10 @@
 /*
  * IPP utilities for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
  * Copyright © 2007-2018 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products.
  *
- * Licensed under Apache License v2.0.  See the file "LICENSE" for more
- * information.
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more information.
  */
 
 /*
@@ -427,7 +425,7 @@ cupsGetResponse(http_t     *http,	/* I - Connection to server or @code CUPS_HTTP
         http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
     }
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
     else if (status == HTTP_STATUS_UPGRADE_REQUIRED)
     {
      /*
@@ -439,7 +437,7 @@ cupsGetResponse(http_t     *http,	/* I - Connection to server or @code CUPS_HTTP
       if (!httpReconnect2(http, 30000, NULL))
         httpEncryption(http, HTTP_ENCRYPTION_REQUIRED);
     }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
   }
 
   if (response)
@@ -630,7 +628,7 @@ cupsSendRequest(http_t     *http,	/* I - Connection to server or @code CUPS_HTTP
       return (HTTP_STATUS_ERROR);
   }
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
  /*
   * See if we have an auth-info attribute and are communicating over
   * a non-local link.  If so, encrypt the link so that we can pass
@@ -644,7 +642,7 @@ cupsSendRequest(http_t     *http,	/* I - Connection to server or @code CUPS_HTTP
     DEBUG_puts("1cupsSendRequest: Unable to encrypt connection.");
     return (HTTP_STATUS_SERVICE_UNAVAILABLE);
   }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
  /*
   * Reconnect if the last response had a "Connection: close"...
@@ -835,7 +833,7 @@ cupsSendRequest(http_t     *http,	/* I - Connection to server or @code CUPS_HTTP
 	  }
 	  break;
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
       case HTTP_STATUS_UPGRADE_REQUIRED :
 	 /*
 	  * Flush any error message, reconnect, and then upgrade with
@@ -858,7 +856,7 @@ cupsSendRequest(http_t     *http,	/* I - Connection to server or @code CUPS_HTTP
 	    return (HTTP_STATUS_SERVICE_UNAVAILABLE);
 	  }
 	  break;
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
       case HTTP_STATUS_EXPECTATION_FAILED :
 	 /*

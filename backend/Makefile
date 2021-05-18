@@ -1,12 +1,10 @@
 #
 # Backend makefile for CUPS.
 #
-# Copyright © 2021 by OpenPrinting.
-# Copyright © 2007-2019 by Apple Inc.
-# Copyright © 1997-2007 by Easy Software Products, all rights reserved.
+# Copyright 2007-2019 by Apple Inc.
+# Copyright 1997-2007 by Easy Software Products, all rights reserved.
 #
-# Licensed under Apache License v2.0.  See the file "LICENSE" for more
-# information.
+# Licensed under Apache License v2.0.  See the file "LICENSE" for more information.
 #
 
 include ../Makedefs
@@ -17,18 +15,19 @@ include ../Makedefs
 
 # RBACKENDS are installed mode 0744 so cupsd will run them as root...
 #
-# UBACKENDS are installed mode 0755 so cupsd will run them as an unprivileged
-# user...
+# UBACKENDS and ULBACKENDS are installed mode 0755 so cupsd will run them as
+# an unprivileged user...
 #
 # See http://www.cups.org/doc/api-filter.html for more info...
 RBACKENDS =	\
 		ipp \
 		lpd \
-		usb \
 		$(DNSSD_BACKEND)
 UBACKENDS =	\
 		snmp \
 		socket
+ULBACKENDS =	\
+		usb
 UNITTESTS =	\
 		test1284 \
 		testbackend \
@@ -36,7 +35,8 @@ UNITTESTS =	\
 TARGETS =	\
 		libbackend.a \
 		$(RBACKENDS) \
-		$(UBACKENDS)
+		$(UBACKENDS) \
+		$(ULBACKENDS)
 LIBOBJS	=	\
 		ieee1284.o \
 		network.o \
@@ -65,7 +65,7 @@ all:	$(TARGETS)
 # Make library targets...
 #
 
-libs:
+libs:	$(ULBACKENDS)
 
 
 #
@@ -161,6 +161,18 @@ install-headers:
 #
 
 install-libs:
+	echo Installing backends in $(SERVERBIN)/backend
+	$(INSTALL_DIR) -m 755 $(SERVERBIN)/backend
+	for file in $(ULBACKENDS); do \
+		$(INSTALL_BIN) $$file $(SERVERBIN)/backend; \
+	done
+	if test "x$(SYMROOT)" != "x"; then \
+		$(INSTALL_DIR) $(SYMROOT); \
+		for file in $(ULBACKENDS); do \
+			cp $$file $(SYMROOT); \
+			dsymutil $(SYMROOT)/$$file; \
+		done \
+	fi
 
 
 #
@@ -173,7 +185,7 @@ uninstall:
 		$(RM) $(SERVERBIN)/apple/$$file; \
 	done
 	-$(RMDIR) $(SERVERBIN)/apple
-	for file in $(RBACKENDS) $(UBACKENDS); do \
+	for file in $(RBACKENDS) $(UBACKENDS) $(ULBACKENDS); do \
 		$(RM) $(SERVERBIN)/backend/$$file; \
 	done
 	for file in $(IPPALIASES); do \

@@ -3,7 +3,6 @@
  * commands such as IPP and Bonjour conformance tests.  This tool is
  * inspired by the UNIX "find" command, thus its name.
  *
- * Copyright © 2021 by OpenPrinting.
  * Copyright © 2020 by the IEEE-ISTO Printer Working Group
  * Copyright © 2008-2018 by Apple Inc.
  *
@@ -24,7 +23,7 @@
 #  include <sys/wait.h>
 #endif /* _WIN32 */
 #include <regex.h>
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 #  include <dns_sd.h>
 #elif defined(HAVE_AVAHI)
 #  include <avahi-client/client.h>
@@ -34,7 +33,7 @@
 #  include <avahi-common/error.h>
 #  include <avahi-common/malloc.h>
 #  define kDNSServiceMaxDomainName AVAHI_DOMAIN_NAME_MAX
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
 #ifndef _WIN32
 extern char **environ;			/* Process environment variables */
@@ -100,11 +99,11 @@ typedef struct ippfind_expr_s		/* Expression */
 
 typedef struct ippfind_srv_s		/* Service information */
 {
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
   DNSServiceRef	ref;			/* Service reference for query */
 #elif defined(HAVE_AVAHI)
   AvahiServiceResolver *ref;		/* Resolver */
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
   char		*name,			/* Service name */
 		*domain,		/* Domain name */
 		*regtype,		/* Registration type */
@@ -125,14 +124,14 @@ typedef struct ippfind_srv_s		/* Service information */
  * Local globals...
  */
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 static DNSServiceRef dnssd_ref;		/* Master service reference */
 #elif defined(HAVE_AVAHI)
 static AvahiClient *avahi_client = NULL;/* Client information */
 static int	avahi_got_data = 0;	/* Got data from poll? */
 static AvahiSimplePoll *avahi_poll = NULL;
 					/* Poll information */
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
 static int	address_family = AF_UNSPEC;
 					/* Address family for LIST */
@@ -145,7 +144,7 @@ static int	ipp_version = 20;	/* IPP version for LIST */
  * Local functions...
  */
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 static void DNSSD_API	browse_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode, const char *serviceName, const char *regtype, const char *replyDomain, void *context) _CUPS_NONNULL(1,5,6,7,8);
 static void DNSSD_API	browse_local_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode, const char *serviceName, const char *regtype, const char *replyDomain, void *context) _CUPS_NONNULL(1,5,6,7,8);
 #elif defined(HAVE_AVAHI)
@@ -161,7 +160,7 @@ static void		browse_callback(AvahiServiceBrowser *browser,
 static void		client_callback(AvahiClient *client,
 					AvahiClientState state,
 					void *context);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_AVAHI */
 
 static int		compare_services(ippfind_srv_t *a, ippfind_srv_t *b);
 static const char	*dnssd_error_string(int error);
@@ -175,7 +174,7 @@ static int		list_service(ippfind_srv_t *service);
 static ippfind_expr_t	*new_expr(ippfind_op_t op, int invert,
 			          const char *value, const char *regex,
 			          char **args);
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 static void DNSSD_API	resolve_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode, const char *fullName, const char *hostTarget, uint16_t port, uint16_t txtLen, const unsigned char *txtRecord, void *context) _CUPS_NONNULL(1,5,6,9, 10);
 #elif defined(HAVE_AVAHI)
 static int		poll_callback(struct pollfd *pollfds,
@@ -194,7 +193,7 @@ static void		resolve_callback(AvahiServiceResolver *res,
 					 AvahiStringList *txt,
 					 AvahiLookupResultFlags flags,
 					 void *context);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 static void		set_service_uri(ippfind_srv_t *service);
 static void		show_usage(void) _CUPS_NORETURN;
 static void		show_version(void) _CUPS_NORETURN;
@@ -228,10 +227,10 @@ main(int  argc,				/* I - Number of command-line args */
 					/* Logic for next expression */
   int			invert = 0;	/* Invert expression? */
   int			err;		/* DNS-SD error */
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
   fd_set		sinput;		/* Input set for select() */
   struct timeval	stimeout;	/* Timeout for select() */
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
   double		endtime;	/* End time */
   static const char * const ops[] =	/* Node operation names */
   {
@@ -1130,7 +1129,7 @@ main(int  argc,				/* I - Number of command-line args */
   * Start up browsing/resolving...
   */
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
   if ((err = DNSServiceCreateConnection(&dnssd_ref)) != kDNSServiceErr_NoError)
   {
     _cupsLangPrintf(stderr, _("ippfind: Unable to use Bonjour: %s"),
@@ -1156,7 +1155,7 @@ main(int  argc,				/* I - Number of command-line args */
                     dnssd_error_string(err));
     return (IPPFIND_EXIT_BONJOUR);
   }
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
   for (search = (const char *)cupsArrayFirst(searches);
        search;
@@ -1231,7 +1230,7 @@ main(int  argc,				/* I - Number of command-line args */
       if (getenv("IPPFIND_DEBUG"))
         fprintf(stderr, "Resolving name=\"%s\", regtype=\"%s\", domain=\"%s\"\n", name, regtype, domain);
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
       service->ref = dnssd_ref;
       err          = DNSServiceResolve(&(service->ref),
                                        kDNSServiceFlagsShareConnection, 0, name,
@@ -1248,7 +1247,7 @@ main(int  argc,				/* I - Number of command-line args */
         err = 0;
       else
         err = avahi_client_errno(avahi_client);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
     }
     else
     {
@@ -1259,7 +1258,7 @@ main(int  argc,				/* I - Number of command-line args */
       if (getenv("IPPFIND_DEBUG"))
         fprintf(stderr, "Browsing for regtype=\"%s\", domain=\"%s\"\n", regtype, domain);
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
       DNSServiceRef	ref;		/* Browse reference */
 
       ref = dnssd_ref;
@@ -1291,7 +1290,7 @@ main(int  argc,				/* I - Number of command-line args */
         err = 0;
       else
         err = avahi_client_errno(avahi_client);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
     }
 
     if (err)
@@ -1316,7 +1315,7 @@ main(int  argc,				/* I - Number of command-line args */
   {
     int		process = 0;		/* Process services? */
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
     int fd = DNSServiceRefSockFD(dnssd_ref);
 					/* File descriptor for DNS-SD */
 
@@ -1367,7 +1366,7 @@ main(int  argc,				/* I - Number of command-line args */
 
       process = 1;
     }
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
     if (process)
     {
@@ -1397,7 +1396,7 @@ main(int  argc,				/* I - Number of command-line args */
 
           if (active < 50)
           {
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 	    service->ref = dnssd_ref;
 	    err          = DNSServiceResolve(&(service->ref),
 					     kDNSServiceFlagsShareConnection, 0,
@@ -1419,7 +1418,7 @@ main(int  argc,				/* I - Number of command-line args */
 	      err = 0;
 	    else
 	      err = avahi_client_errno(avahi_client);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
 	    if (err)
 	    {
@@ -1440,11 +1439,11 @@ main(int  argc,				/* I - Number of command-line args */
 
           if (service->ref)
           {
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 	    DNSServiceRefDeallocate(service->ref);
 #else
             avahi_service_resolver_free(service->ref);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
 	    service->ref = NULL;
 	  }
@@ -1474,7 +1473,7 @@ main(int  argc,				/* I - Number of command-line args */
 }
 
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 /*
  * 'browse_callback()' - Browse devices.
  */
@@ -1544,7 +1543,7 @@ browse_local_callback(
                         replyDomain);
   service->is_local = 1;
 }
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
 
 #ifdef HAVE_AVAHI
@@ -1648,7 +1647,7 @@ compare_services(ippfind_srv_t *a,	/* I - First device */
 static const char *			/* O - Error message */
 dnssd_error_string(int error)		/* I - Error number */
 {
-#  ifdef HAVE_MDNSRESPONDER
+#  ifdef HAVE_DNSSD
   switch (error)
   {
     case kDNSServiceErr_NoError :
@@ -1753,7 +1752,7 @@ dnssd_error_string(int error)		/* I - Error number */
 
 #  elif defined(HAVE_AVAHI)
   return (avahi_strerror(error));
-#  endif /* HAVE_MDNSRESPONDER */
+#  endif /* HAVE_DNSSD */
 }
 
 
@@ -2179,12 +2178,12 @@ get_service(cups_array_t *services,	/* I - Service array */
   * resolves...
   */
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
   DNSServiceConstructFullName(fullName, serviceName, regtype, replyDomain);
 #else /* HAVE_AVAHI */
   avahi_service_name_join(fullName, kDNSServiceMaxDomainName, serviceName,
                           regtype, replyDomain);
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
   service->fullName = strdup(fullName);
 
@@ -2546,7 +2545,7 @@ poll_callback(
  * 'resolve_callback()' - Process resolve data.
  */
 
-#ifdef HAVE_MDNSRESPONDER
+#ifdef HAVE_DNSSD
 static void DNSSD_API
 resolve_callback(
     DNSServiceRef       sdRef,		/* I - Service reference */
@@ -2699,7 +2698,7 @@ resolve_callback(
 
   set_service_uri(service);
 }
-#endif /* HAVE_MDNSRESPONDER */
+#endif /* HAVE_DNSSD */
 
 
 /*

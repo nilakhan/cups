@@ -1,11 +1,9 @@
 /*
  * cupsGetDevices implementation for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
- * Copyright © 2008-2016 by Apple Inc.
+ * Copyright 2008-2016 by Apple Inc.
  *
- * Licensed under Apache License v2.0.  See the file "LICENSE" for more
- * information.
+ * Licensed under Apache License v2.0.  See the file "LICENSE" for more information.
  */
 
 /*
@@ -131,7 +129,7 @@ cupsGetDevices(
 	}
       }
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
       else if (status == HTTP_STATUS_UPGRADE_REQUIRED)
       {
        /*
@@ -143,7 +141,7 @@ cupsGetDevices(
 	if (!httpReconnect2(http, 30000, NULL))
 	  httpEncryption(http, HTTP_ENCRYPTION_REQUIRED);
       }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
     }
   }
   while (status == HTTP_STATUS_UNAUTHORIZED ||

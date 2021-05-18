@@ -1,7 +1,6 @@
 /*
  * Main loop for the CUPS scheduler.
  *
- * Copyright © 2021 by OpenPrinting.
  * Copyright © 2007-2019 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products, all rights reserved.
  *
@@ -582,7 +581,7 @@ main(int  argc,				/* I - Number of command-line args */
   * Clean out old temp files and printer cache data.
   */
 
-  if (!RequestRoot || !strncmp(TempDir, RequestRoot, strlen(RequestRoot)))
+  if (!strncmp(TempDir, RequestRoot, strlen(RequestRoot)))
     cupsdCleanFiles(TempDir, NULL);
 
   cupsdCleanFiles(CacheDir, "*.ipp");
@@ -860,9 +859,9 @@ main(int  argc,				/* I - Number of command-line args */
       * Got an error from select!
       */
 
-#ifdef HAVE_DNSSD
+#if defined(HAVE_DNSSD) || defined(HAVE_AVAHI)
       cupsd_printer_t	*p;		/* Current printer */
-#endif /* HAVE_DNSSD */
+#endif /* HAVE_DNSSD || HAVE_AVAHI */
 
       if (errno == EINTR)		/* Just interrupted by a signal */
         continue;
@@ -902,13 +901,13 @@ main(int  argc,				/* I - Number of command-line args */
 			job->print_pipes[0], job->print_pipes[1],
 			job->back_pipes[0], job->back_pipes[1]);
 
-#ifdef HAVE_DNSSD
+#if defined(HAVE_DNSSD) || defined(HAVE_AVAHI)
       for (p = (cupsd_printer_t *)cupsArrayFirst(Printers);
 	   p;
 	   p = (cupsd_printer_t *)cupsArrayNext(Printers))
         cupsdLogMessage(CUPSD_LOG_EMERG, "printer[%s] reg_name=\"%s\"", p->name,
 	                p->reg_name ? p->reg_name : "(null)");
-#endif /* HAVE_DNSSD */
+#endif /* HAVE_DNSSD || HAVE_AVAHI */
 
       break;
     }
@@ -1909,10 +1908,10 @@ service_add_listener(int fd,		/* I - Socket file descriptor */
   lis->fd        = fd;
   lis->on_demand = 1;
 
-#  ifdef HAVE_TLS
+#  ifdef HAVE_SSL
   if (httpAddrPort(&(lis->address)) == 443)
     lis->encryption = HTTP_ENCRYPT_ALWAYS;
-#  endif /* HAVE_TLS */
+#  endif /* HAVE_SSL */
 }
 #endif /* HAVE_ONDEMAND */
 

@@ -1,7 +1,7 @@
 /*
  * Printer routines for the CUPS scheduler.
  *
- * Copyright © 2020-2021 by OpenPrinting
+ * Copyright © 2020 by Michael R Sweet
  * Copyright © 2007-2019 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products, all rights reserved.
  *
@@ -851,10 +851,10 @@ cupsdDeletePrinter(
   cupsdClearString(&p->alert);
   cupsdClearString(&p->alert_description);
 
-#ifdef HAVE_DNSSD
+#if defined(HAVE_DNSSD) || defined(HAVE_AVAHI)
   cupsdClearString(&p->pdl);
   cupsdClearString(&p->reg_name);
-#endif /* HAVE_DNSSD */
+#endif /* HAVE_DNSSD || HAVE_AVAHI */
 
   cupsArrayDelete(p->filetypes);
 
@@ -1476,10 +1476,13 @@ cupsdSaveAllPrinters(void)
   int			i;		/* Looping var */
   cups_file_t		*fp;		/* printers.conf file */
   char			filename[1024],	/* printers.conf filename */
+			temp[1024],	/* Temporary string */
 			value[2048],	/* Value string */
 			*ptr,		/* Pointer into value */
 			*name;		/* Current user/group name */
   cupsd_printer_t	*printer;	/* Current printer class */
+  time_t		curtime;	/* Current time */
+  struct tm		curdate;	/* Current date */
   cups_option_t		*option;	/* Current option */
   ipp_attribute_t	*marker;	/* Current marker attribute */
 
@@ -1498,6 +1501,10 @@ cupsdSaveAllPrinters(void)
  /*
   * Write a small header to the file...
   */
+
+  time(&curtime);
+  localtime_r(&curtime, &curdate);
+  strftime(temp, sizeof(temp) - 1, "%Y-%m-%d %H:%M", &curdate);
 
   cupsFilePuts(fp, "# Printer configuration file for " CUPS_SVERSION "\n");
   cupsFilePrintf(fp, "# Written by cupsd\n");
@@ -3603,8 +3610,6 @@ add_printer_formats(cupsd_printer_t *p)	/* I - Printer */
   ipp_attribute_t *attr;		/* document-format-supported attribute */
   char		mimetype[MIME_MAX_SUPER + MIME_MAX_TYPE + 2];
 					/* MIME type name */
-  const char	*preferred = "image/urf";
-					/* document-format-preferred value */
 
 
  /*
@@ -3650,9 +3655,6 @@ add_printer_formats(cupsd_printer_t *p)	/* I - Printer */
 
       cupsArrayDelete(filters);
       cupsArrayAdd(p->filetypes, type);
-
-      if (!strcasecmp(mimetype, "application/pdf"))
-        preferred = "application/pdf";
     }
     else
       cupsdLogMessage(CUPSD_LOG_DEBUG2,
@@ -3690,9 +3692,7 @@ add_printer_formats(cupsd_printer_t *p)	/* I - Printer */
     attr->values[i].string.text = _cupsStrAlloc(mimetype);
   }
 
-  ippAddString(p->attrs, IPP_TAG_PRINTER, IPP_CONST_TAG(IPP_TAG_MIMETYPE), "document-format-preferred", NULL, preferred);
-
-#ifdef HAVE_DNSSD
+#if defined(HAVE_DNSSD) || defined(HAVE_AVAHI)
   {
     char		pdl[1024];	/* Buffer to build pdl list */
     mime_filter_t	*filter;	/* MIME filter looping var */
@@ -3712,6 +3712,9 @@ add_printer_formats(cupsd_printer_t *p)	/* I - Printer */
     }
 
     pdl[0] = '\0';
+
+    if (!filter && mimeType(MimeDatabase, "application", "octet-stream"))
+      strlcat(pdl, "application/octet-stream,", sizeof(pdl));
 
    /*
     * Then list a bunch of formats that are supported by the printer...
@@ -3736,19 +3739,15 @@ add_printer_formats(cupsd_printer_t *p)	/* I - Printer */
 	  strlcat(pdl, "image/png,", sizeof(pdl));
 	else if (!_cups_strcasecmp(type->type, "pwg-raster"))
 	  strlcat(pdl, "image/pwg-raster,", sizeof(pdl));
-	else if (!_cups_strcasecmp(type->type, "urf"))
-	  strlcat(pdl, "image/urf,", sizeof(pdl));
       }
     }
 
     if (pdl[0])
       pdl[strlen(pdl) - 1] = '\0';	/* Remove trailing comma */
 
-    cupsdLogMessage(CUPSD_LOG_DEBUG, "%s: pdl='%s'", p->name, pdl);
-
     cupsdSetString(&p->pdl, pdl);
   }
-#endif /* HAVE_DNSSD */
+#endif /* HAVE_DNSSD || HAVE_AVAHI */
 }
 
 
@@ -3874,15 +3873,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
 		margins[16];		/* media-*-margin-supported values */
   const char	*filter,		/* Current filter */
 		*mandatory;		/* Current mandatory attribute */
-  ipp_attribute_t *media_col_ready,	/* media-col-ready attribute */
-		*media_ready;		/* media-ready attribute */
-  int		num_urf;		/* Number of urf-supported values */
-  const char	*urf[16],		/* urf-supported values */
-		*urf_prefix;		/* Prefix string for value */
-  char		*urf_ptr,		/* Pointer into value */
-		urf_fn[64],		/* FN (finishings) value */
-		urf_pq[32],		/* PQ (print-quality) value */
-		urf_rs[32];		/* RS (resolution) value */
   static const char * const pwg_raster_document_types[] =
 		{
 		  "black_1",
@@ -4096,19 +4086,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
       cupsdSetString(&p->strings, strings_name);
     else
       cupsdClearString(&p->strings);
-
-    num_urf         = 0;
-    urf[num_urf ++] = "V1.4";
-    urf[num_urf ++] = "CP1";
-    urf[num_urf ++] = "W8";
-
-    for (i = 0, urf_ptr = urf_pq, urf_prefix = "PQ"; i < num_qualities; i ++)
-    {
-      snprintf(urf_ptr, sizeof(urf_pq) - (size_t)(urf_ptr - urf_pq), "%s%d", urf_prefix, qualities[i]);
-      urf_prefix = "-";
-      urf_ptr    += strlen(urf_ptr);
-    }
-    urf[num_urf ++] = urf_pq;
 
    /*
     * Add media options from the PPD file...
@@ -4358,39 +4335,7 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
 	  ippDelete(col);
 	}
       }
-
-     /*
-      * media[-col]-ready
-      */
-
-      for (media_col_ready = NULL, media_ready = NULL, i = p->pc->num_sizes, pwgsize = p->pc->sizes; i > 0; i --, pwgsize ++)
-      {
-	ipp_t *col;			// media-col-ready value
-
-        // Skip printer sizes that don't have a PPD size or aren't in the ready
-        // sizes array...
-	if (!pwgsize->map.ppd || !cupsArrayFind(ReadyPaperSizes, pwgsize->map.ppd))
-	  continue;
-
-        // Add or append a media-ready value
-	if (media_ready)
-	  ippSetString(p->ppd_attrs, &media_ready, ippGetCount(media_ready), pwgsize->map.pwg);
-	else
-	  media_ready = ippAddString(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD, "media-ready", NULL, pwgsize->map.pwg);
-
-        // Add or append a media-col-ready value
-	col = new_media_col(pwgsize);
-
-	if (media_col_ready)
-	  ippSetCollection(p->ppd_attrs, &media_col_ready, ippGetCount(media_col_ready), col);
-	else
-	  media_col_ready = ippAddCollection(p->ppd_attrs, IPP_TAG_PRINTER, "media-col-ready", col);
-
-	ippDelete(col);
-      }
     }
-
-    ippAddString(p->ppd_attrs, IPP_TAG_PRINTER, IPP_CONST_TAG(IPP_TAG_TEXT), "mopria-certified", NULL, "1.3");
 
    /*
     * Output bin...
@@ -4442,8 +4387,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
 		   "output-bin-supported", NULL, "face-up");
       ippAddString(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD,
 		   "output-bin-default", NULL, "face-up");
-
-      urf[num_urf ++] = "OFU0";
     }
     else
     {
@@ -4470,8 +4413,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
       ippAddString(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD,
                    "print-color-mode-default", NULL, "color");
       ippAddStrings(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD, "pwg-raster-document-type-supported", 3, NULL, pwg_raster_document_types);
-
-      urf[num_urf ++] = "SRGB24";
     }
     else
     {
@@ -4543,11 +4484,7 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
 	  ippAddResolution(p->ppd_attrs, IPP_TAG_PRINTER, "printer-resolution-default", IPP_RES_PER_INCH, xdpi, ydpi);
 
         if (i == 0)
-        {
 	  ippAddResolution(p->ppd_attrs, IPP_TAG_PRINTER, "pwg-raster-document-resolution-supported", IPP_RES_PER_INCH, xdpi, ydpi);
-          snprintf(urf_rs, sizeof(urf_rs), "RS%d", xdpi);
-          urf[num_urf ++] = urf_rs;
-	}
       }
     }
     else if ((ppd_attr = ppdFindAttr(ppd, "DefaultResolution", NULL)) != NULL &&
@@ -4581,8 +4518,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
 		       "printer-resolution-supported", IPP_RES_PER_INCH,
 		       xdpi, ydpi);
       ippAddResolution(p->ppd_attrs, IPP_TAG_PRINTER, "pwg-raster-document-resolution-supported", IPP_RES_PER_INCH, xdpi, ydpi);
-      snprintf(urf_rs, sizeof(urf_rs), "RS%d", xdpi);
-      urf[num_urf ++] = urf_rs;
     }
     else
     {
@@ -4597,8 +4532,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
 		       "printer-resolution-supported", IPP_RES_PER_INCH,
 		       300, 300);
       ippAddResolution(p->ppd_attrs, IPP_TAG_PRINTER, "pwg-raster-document-resolution-supported", IPP_RES_PER_INCH, 300, 300);
-      strlcpy(urf_rs, "RS300", sizeof(urf_rs));
-      urf[num_urf ++] = urf_rs;
     }
 
    /*
@@ -4619,8 +4552,6 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
       p->type |= CUPS_PRINTER_DUPLEX;
 
       ippAddString(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD, "pwg-raster-document-sheet-back", NULL, "normal");
-
-      urf[num_urf ++] = "DM1";
 
       ippAddStrings(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD,
 		    "sides-supported", 3, NULL, sides);
@@ -4650,14 +4581,10 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
     {
       _pwg_finishings_t	*fin;		/* Current finishing value */
 
-      for (fin = (_pwg_finishings_t *)cupsArrayFirst(p->pc->finishings), urf_ptr = urf_fn, urf_prefix = "FN"; fin; fin = (_pwg_finishings_t *)cupsArrayNext(p->pc->finishings))
+      for (fin = (_pwg_finishings_t *)cupsArrayFirst(p->pc->finishings); fin; fin = (_pwg_finishings_t *)cupsArrayNext(p->pc->finishings))
       {
         if (num_finishings < (int)(sizeof(finishings) / sizeof(finishings[0])))
           finishings[num_finishings++] = (int)fin->value;
-
-        snprintf(urf_ptr, sizeof(urf_fn) - (size_t)(urf_ptr - urf_fn), "%s%d", urf_prefix, fin->value);
-        urf_prefix = "-";
-        urf_ptr    += strlen(urf_ptr);
 
         switch (fin->value)
         {
@@ -4718,15 +4645,7 @@ load_ppd(cupsd_printer_t *p)		/* I - Printer */
               break;
         }
       }
-
-      if (urf_ptr > urf_fn)
-        urf[num_urf ++] = urf_fn;
     }
-    else
-      urf[num_urf ++] = "FN3";
-
-    /* urf-supported */
-    ippAddStrings(p->ppd_attrs, IPP_TAG_PRINTER, IPP_TAG_KEYWORD, "urf-supported", num_urf, NULL, urf);
 
     if (p->pc && p->pc->templates)
     {

@@ -58,6 +58,7 @@ The default is "No".
 Specifies whether shared printers are advertised.
 The default is "No".
 <dt><a name="DefaultAuthType"></a><b>DefaultAuthType Basic</b>
+<dd style="margin-left: 5.0em"><dt><b>DefaultAuthType Negotiate</b>
 <dd style="margin-left: 5.0em"><br>
 Specifies the default type of authentication to use.
 The default is "Basic".
@@ -75,7 +76,6 @@ The default is "en".
 <dd style="margin-left: 5.0em">Specifies the default paper size for new print queues. "Auto" uses a locale-specific default, while "None" specifies there is no default paper size.
 Specific size names are typically "Letter" or "A4".
 The default is "Auto".
-Note: The default paper size must use a size name from the PPD file and not a PWG self-describing media size name.
 <dt><a name="DefaultPolicy"></a><b>DefaultPolicy </b><i>policy-name</i>
 <dd style="margin-left: 5.0em">Specifies the default access policy to use.
 The default access policy is "default".
@@ -111,6 +111,9 @@ The default limit is "0".
 value) of filters that are run to print a job.
 The nice value ranges from 0, the highest priority, to 19, the lowest priority.
 The default is 0.
+<dt><a name="GSSServiceName"></a><b>GSSServiceName </b><i>name</i>
+<dd style="margin-left: 5.0em">Specifies the service name when using Kerberos authentication.
+The default service name is "http."
 <dt><b>HostNameLookups On</b>
 <dd style="margin-left: 5.0em"><dt><a name="HostNameLookups"></a><b>HostNameLookups Off</b>
 <dd style="margin-left: 5.0em"><dt><b>HostNameLookups Double</b>
@@ -142,6 +145,9 @@ The default is "5".
 <dd style="margin-left: 5.0em"><dt><b>KeepAlive No</b>
 <dd style="margin-left: 5.0em">Specifies whether to support HTTP keep-alive connections.
 The default is "Yes".
+<dt><a name="KeepAliveTimeout"></a><b>KeepAliveTimeout </b><i>seconds</i>
+<dd style="margin-left: 5.0em">Specifies how long an idle client connection remains open.
+The default is "30".
 <dt><a name="LimitIPP"></a><b>&lt;Limit </b><i>operation </i>...<b>> </b>... <b>&lt;/Limit></b>
 <dd style="margin-left: 5.0em">Specifies the IPP operations that are being limited inside a Policy section. IPP operation names are listed below in the section "IPP OPERATION NAMES".
 <dt><a name="Limit"></a><b>&lt;Limit </b><i>method </i>...<b>> </b>... <b>&lt;/Limit></b>
@@ -236,11 +242,6 @@ The default is "86400" (preserve 1 day).
 If a numeric value is specified, the job history is preserved for the indicated number of seconds after printing.
 If "Yes", the job history is preserved until the MaxJobs limit is reached.
 The default is "Yes".
-<dt><a name="ReadyPaperSizes"></a><b>ReadyPaperSizes </b><i>sizename[,...]</i>
-<dd style="margin-left: 5.0em">Specifies a list of potential paper sizes that are reported as "ready" (loaded).
-The actual list will only contain sizes that each printer supports.
-The default is "Letter,Legal,Tabloid,4x6,Env10" when the default paper size is "Letter" and "A3,A4,A5,A6,EnvDL" otherwise.
-Note: Paper sizes must use the size names from the PPD file and not PWG self-describing media size names.
 <dt><a name="ReloadTimeout"></a><b>ReloadTimeout </b><i>seconds</i>
 <dd style="margin-left: 5.0em">Specifies the amount of time to wait for job completion before restarting the scheduler.
 The default is "30".
@@ -463,6 +464,7 @@ The Order directive controls whether Allow lines are evaluated before or after D
 <dt><b>AuthType None</b>
 <dd style="margin-left: 5.0em"><dt><b>AuthType Basic</b>
 <dd style="margin-left: 5.0em"><dt><b>AuthType Default</b>
+<dd style="margin-left: 5.0em"><dt><b>AuthType Negotiate</b>
 <dd style="margin-left: 5.0em">Specifies the type of authentication required.
 The value "Default" corresponds to the DefaultAuthType value.
 <dt><b>Deny all</b>
@@ -545,8 +547,6 @@ The "default" values are "notify-events", "notify-pull-method", "notify-recipien
 <h3><a name="DEPRECATED_DIRECTIVES">Deprecated Directives</a></h3>
 The following directives are deprecated and will be removed in a future release of CUPS:
 <dl class="man">
-<dt><b>AuthType Negotiate</b>
-<dd style="margin-left: 5.0em">Specifies Kerberos authentication is required.
 <dt><a name="Classification"></a><b>Classification </b><i>banner</i>
 <dd style="margin-left: 5.0em"><br>
 Specifies the security classification of the server.
@@ -557,11 +557,6 @@ The default is no classification banner.
 <dd style="margin-left: 5.0em"><br>
 Specifies whether users may override the classification (cover page) of individual print jobs using the "job-sheets" option.
 The default is "No".
-<dt><b>DefaultAuthType Negotiate</b>
-<dd style="margin-left: 5.0em">Specifies that Kerberos authentication is required by default.
-<dt><a name="GSSServiceName"></a><b>GSSServiceName </b><i>name</i>
-<dd style="margin-left: 5.0em">Specifies the service name when using Kerberos authentication.
-The default service name is "http."
 <dt><a name="PageLogFormat"></a><b>PageLogFormat </b><i>format-string</i>
 <dd style="margin-left: 5.0em">Specifies the format of PageLog lines.
 Sequences beginning with percent (%) characters are replaced with the corresponding information, while all other characters are copied literally.
@@ -581,6 +576,9 @@ The following percent sequences are recognized:
 The default is the empty string, which disables page logging.
 The string "%p %u %j %T %P %C %{job-billing} %{job-originating-host-name} %{job-name} %{media} %{sides}" creates a page log with the standard items.
 Use "%{job-impressions-completed}" to insert the number of pages (sides) that were printed, or "%{job-media-sheets-completed}" to insert the number of sheets that were printed.
+<dt><a name="RIPCache"></a><b>RIPCache </b><i>size</i>
+<dd style="margin-left: 5.0em">Specifies the maximum amount of memory to use when converting documents into bitmaps for a printer.
+The default is "128m".
 </dl>
 <h2 class="title"><a name="NOTES">Notes</a></h2>
 File, directory, and user configuration directives that used to be allowed in the <b>cupsd.conf</b> file are now stored in the
@@ -627,7 +625,9 @@ Require authentication for accesses from outside the 10. network:
 <b>subscriptions.conf</b>(5),
 CUPS Online Help (<a href="http://localhost:631/help">http://localhost:631/help</a>)
 <h2 class="title"><a name="COPYRIGHT">Copyright</a></h2>
-Copyright &copy; 2020-2021 by OpenPrinting.
+Copyright &copy; 2020 by Michael R Sweet
+<br>
+Copyright &copy; 2007-2019 by Apple Inc.
 
 </body>
 </html>

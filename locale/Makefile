@@ -1,7 +1,6 @@
 #
 # Locale file makefile for CUPS.
 #
-# Copyright © 2021 by OpenPrinting.
 # Copyright © 2007-2019 by Apple Inc.
 # Copyright © 1993-2007 by Easy Software Products.
 #
@@ -128,9 +127,9 @@ pot:	checkpo po2strings
 	touch cups.pot
 	cd ..; xgettext -o locale/cups.pot -cTRANSLATORS -s \
 		--keyword=_ --no-wrap --from-code utf-8 \
-		--copyright-holder="OpenPrinting" \
+		--copyright-holder="Apple Inc." \
 		--package-name="CUPS" --package-version="$(CUPS_VERSION)" \
-		--msgid-bugs-address="https://github.com/openprinting/cups/issues" \
+		--msgid-bugs-address="https://github.com/apple/cups/issues" \
 		*/*.c */*.cxx
 	(cat cups.header; tail +6 cups.pot) > cups.pot.N
 	mv cups.pot.N cups.pot

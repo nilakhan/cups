@@ -1,7 +1,6 @@
 /*
  * Private PPD definitions for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
  * Copyright © 2007-2019 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products, all rights reserved.
  *
@@ -36,7 +35,7 @@ extern "C" {
  * Constants...
  */
 
-#  define _PPD_CACHE_VERSION	10	/* Version number in cache file */
+#  define _PPD_CACHE_VERSION	9	/* Version number in cache file */
 
 
 /*

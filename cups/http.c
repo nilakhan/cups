@@ -1,8 +1,7 @@
 /*
  * HTTP routines for CUPS.
  *
- * Copyright © 2021 by OpenPrinting.
- * Copyright © 2007-2021 by Apple Inc.
+ * Copyright © 2007-2019 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products, all rights reserved.
  *
  * This file contains Kerberos support code, copyright 2006 by
@@ -66,9 +65,9 @@ static off_t		http_set_length(http_t *http);
 static void		http_set_timeout(int fd, double timeout);
 static void		http_set_wait(http_t *http);
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
 static int		http_tls_upgrade(http_t *http);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
 
 /*
@@ -507,10 +506,10 @@ httpDelete(http_t     *http,		/* I - HTTP connection */
 void
 _httpDisconnect(http_t *http)		/* I - HTTP connection */
 {
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (http->tls)
     _httpTLSStop(http);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   httpAddrClose(NULL, http->fd);
 
@@ -528,7 +527,7 @@ httpEncryption(http_t            *http,	/* I - HTTP connection */
 {
   DEBUG_printf(("httpEncryption(http=%p, e=%d)", (void *)http, e));
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (!http)
     return (0);
 
@@ -560,7 +559,7 @@ httpEncryption(http_t            *http,	/* I - HTTP connection */
     return (-1);
   else
     return (0);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 }
 
 
@@ -655,10 +654,10 @@ httpFlush(http_t *http)			/* I - HTTP connection */
 
     http->state = HTTP_STATE_WAITING;
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
     if (http->tls)
       _httpTLSStop(http);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
     httpAddrClose(NULL, http->fd);
 
@@ -1087,10 +1086,10 @@ httpGetReady(http_t *http)		/* I - HTTP connection */
     return (0);
   else if (http->used > 0)
     return ((size_t)http->used);
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   else if (http->tls)
     return (_httpTLSPending(http));
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   return (0);
 }
@@ -1158,27 +1157,27 @@ httpGets(char   *line,			/* I - Line to read into */
 
     while (http->used == 0)
     {
-     /*
+        /*
       * No newline; see if there is more data to be read...
       */
 
-      while (!_httpWait(http, http->wait_value, 1))
-      {
-	if (http->timeout_cb && (*http->timeout_cb)(http, http->timeout_data))
-	  continue;
+        while (!_httpWait(http, http->wait_value, 1))
+        {
+            if (http->timeout_cb && (*http->timeout_cb)(http, http->timeout_data))
+                continue;
 
-        DEBUG_puts("3httpGets: Timed out!");
+            DEBUG_puts("3httpGets: Timed out!");
 #ifdef _WIN32
-        http->error = WSAETIMEDOUT;
+            http->error = WSAETIMEDOUT;
 #else
-        http->error = ETIMEDOUT;
+            http->error = ETIMEDOUT;
 #endif /* _WIN32 */
-        return (NULL);
-      }
+            return (NULL);
+        }
 
-      bytes = http_read(http, http->buffer + http->used, (size_t)(HTTP_MAX_BUFFER - http->used));
+        bytes = http_read(http, http->buffer + http->used, (size_t)(HTTP_MAX_BUFFER - http->used));
 
-      DEBUG_printf(("4httpGets: read " CUPS_LLFMT " bytes.", CUPS_LLCAST bytes));
+        DEBUG_printf(("4httpGets: read " CUPS_LLFMT " bytes.", CUPS_LLCAST bytes));
 
       if (bytes < 0)
       {
@@ -1529,9 +1528,9 @@ httpInitialize(void)
 #  endif /* !SO_NOSIGPIPE */
 #endif /* _WIN32 */
 
-#  ifdef HAVE_TLS
+#  ifdef HAVE_SSL
   _httpTLSInitialize();
-#  endif /* HAVE_TLS */
+#  endif /* HAVE_SSL */
 
   initialized = 1;
   _cupsGlobalUnlock();
@@ -2338,13 +2337,13 @@ httpReconnect2(http_t *http,		/* I - HTTP connection */
     return (-1);
   }
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (http->tls)
   {
     DEBUG_puts("2httpReconnect2: Shutting down SSL/TLS...");
     _httpTLSStop(http);
   }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
  /*
   * Close any previously open socket...
@@ -2412,7 +2411,7 @@ httpReconnect2(http_t *http,		/* I - HTTP connection */
   http->hostaddr = &(addr->addr);
   http->error    = 0;
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (http->encryption == HTTP_ENCRYPTION_ALWAYS)
   {
    /*
@@ -2422,14 +2421,13 @@ httpReconnect2(http_t *http,		/* I - HTTP connection */
     if (_httpTLSStart(http) != 0)
     {
       httpAddrClose(NULL, http->fd);
-      http->fd = -1;
 
       return (-1);
     }
   }
   else if (http->encryption == HTTP_ENCRYPTION_REQUIRED && !http->tls_upgrade)
     return (http_tls_upgrade(http));
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   DEBUG_printf(("1httpReconnect2: Connected to %s:%d...",
 		httpAddrString(http->hostaddr, temp, sizeof(temp)),
@@ -2515,11 +2513,11 @@ httpSetCredentials(http_t	*http,		/* I - HTTP connection */
   if (!http || cupsArrayCount(credentials) < 1)
     return (-1);
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   _httpFreeCredentials(http->tls_credentials);
 
   http->tls_credentials = _httpCreateCredentials(credentials);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   return (http->tls_credentials ? 0 : -1);
 }
@@ -2704,10 +2702,10 @@ httpShutdown(http_t *http)		/* I - HTTP connection */
   if (!http || http->fd < 0)
     return;
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (http->tls)
     _httpTLSStop(http);
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
 #ifdef _WIN32
   shutdown(http->fd, SD_RECEIVE);	/* Microsoft-ism... */
@@ -2782,13 +2780,12 @@ _httpUpdate(http_t        *http,	/* I - HTTP connection */
     if (http->status < HTTP_STATUS_BAD_REQUEST)
       http->digest_tries = 0;
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
     if (http->status == HTTP_STATUS_SWITCHING_PROTOCOLS && !http->tls)
     {
       if (_httpTLSStart(http) != 0)
       {
         httpAddrClose(NULL, http->fd);
-        http->fd = -1;
 
 	*status = http->status = HTTP_STATUS_ERROR;
 	return (0);
@@ -2797,7 +2794,7 @@ _httpUpdate(http_t        *http,	/* I - HTTP connection */
       *status = HTTP_STATUS_CONTINUE;
       return (0);
     }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
     if (http_set_length(http) < 0)
     {
@@ -3006,13 +3003,13 @@ _httpWait(http_t *http,			/* I - HTTP connection */
   * Check the SSL/TLS buffers for data first...
   */
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (http->tls && _httpTLSPending(http))
   {
     DEBUG_puts("5_httpWait: Return 1 since there is pending TLS data.");
     return (1);
   }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
  /*
   * Then try doing a select() or poll() to poll the socket...
@@ -3378,7 +3375,7 @@ httpWriteResponse(http_t        *http,	/* I - HTTP connection */
       httpSetField(http, HTTP_FIELD_KEEP_ALIVE, "timeout=10");
   }
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (status == HTTP_STATUS_UPGRADE_REQUIRED ||
       status == HTTP_STATUS_SWITCHING_PROTOCOLS)
   {
@@ -3391,7 +3388,7 @@ httpWriteResponse(http_t        *http,	/* I - HTTP connection */
     if (!http->fields[HTTP_FIELD_CONTENT_LENGTH])
       httpSetField(http, HTTP_FIELD_CONTENT_LENGTH, "0");
   }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   if (!http->fields[HTTP_FIELD_SERVER])
     httpSetField(http, HTTP_FIELD_SERVER, http->default_fields[HTTP_FIELD_SERVER] ? http->default_fields[HTTP_FIELD_SERVER] : CUPS_MINIMAL);
@@ -4081,9 +4078,7 @@ http_read(http_t *http,			/* I - HTTP connection */
 {
   ssize_t	bytes;			/* Bytes read */
 
-
   DEBUG_printf(("http_read(http=%p, buffer=%p, length=" CUPS_LLFMT ")", (void *)http, (void *)buffer, CUPS_LLCAST length));
-
   if (!http->blocking || http->timeout_value > 0.0)
   {
     while (!httpWait(http, http->wait_value))
@@ -4100,11 +4095,11 @@ http_read(http_t *http,			/* I - HTTP connection */
 
   do
   {
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
     if (http->tls)
       bytes = _httpTLSRead(http, buffer, (int)length);
     else
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
     bytes = recv(http->fd, buffer, length, 0);
 
     if (bytes < 0)
@@ -4387,13 +4382,13 @@ http_send(http_t       *http,		/* I - HTTP connection */
 
   http->status = HTTP_STATUS_CONTINUE;
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
   if (http->encryption == HTTP_ENCRYPTION_REQUIRED && !http->tls)
   {
     httpSetField(http, HTTP_FIELD_CONNECTION, "Upgrade");
     httpSetField(http, HTTP_FIELD_UPGRADE, "TLS/1.2,TLS/1.1,TLS/1.0");
   }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
   if (httpPrintf(http, "%s %s HTTP/1.1\r\n", codes[request], buf) < 1)
   {
@@ -4569,7 +4564,7 @@ http_set_wait(http_t *http)		/* I - HTTP connection */
 }
 
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
 /*
  * 'http_tls_upgrade()' - Force upgrade to TLS encryption.
  */
@@ -4659,7 +4654,7 @@ http_tls_upgrade(http_t *http)		/* I - HTTP connection */
   else
     return (ret);
 }
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
 
 
 /*
@@ -4740,11 +4735,11 @@ http_write(http_t     *http,		/* I - HTTP connection */
       while (nfds <= 0);
     }
 
-#ifdef HAVE_TLS
+#ifdef HAVE_SSL
     if (http->tls)
       bytes = _httpTLSWrite(http, buffer, (int)length);
     else
-#endif /* HAVE_TLS */
+#endif /* HAVE_SSL */
     bytes = send(http->fd, buffer, length, 0);
 
     DEBUG_printf(("3http_write: Write of " CUPS_LLFMT " bytes returned "

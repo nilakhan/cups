@@ -1,8 +1,7 @@
 #
 # Library Makefile for CUPS.
 #
-# Copyright © 2021 by OpenPrinting.
-# Copyright © 2007-2021 by Apple Inc.
+# Copyright © 2007-2019 by Apple Inc.
 # Copyright © 1997-2006 by Easy Software Products, all rights reserved.
 #
 # Licensed under Apache License v2.0.  See the file "LICENSE" for more
@@ -87,7 +86,6 @@ IMAGEOBJS	= \
 		raster-stubs.o
 
 TESTOBJS	= \
-		fuzzipp.o \
 		rasterbench.o \
 		testadmin.o \
 		testarray.o \
@@ -174,7 +172,6 @@ LIBTARGETS =	\
 		libcupsimage.a
 
 UNITTARGETS =	\
-		fuzzipp \
 		rasterbench \
 		testadmin \
 		testarray \
@@ -280,6 +277,13 @@ install-headers:
 	for file in $(HEADERS); do \
 		$(INSTALL_DATA) $$file $(INCLUDEDIR)/cups; \
 	done
+	if test "x$(privateinclude)" != x; then \
+		echo Installing private header files into $(PRIVATEINCLUDE)...; \
+		$(INSTALL_DIR) -m 755 $(PRIVATEINCLUDE); \
+		for file in $(HEADERSPRIV); do \
+			$(INSTALL_DATA) $$file $(PRIVATEINCLUDE)/$$file; \
+		done; \
+	fi
 
 
 #
@@ -349,6 +353,12 @@ uninstall:
 		$(RM) $(INCLUDEDIR)/cups/$$file; \
 	done
 	-$(RMDIR) $(INCLUDEDIR)/cups
+	if test "x$(privateinclude)" != x; then \
+		for file in $(HEADERSPRIV); do \
+			$(RM) $(PRIVATEINCLUDE)/cups/$$file; \
+		done
+		$(RMDIR) $(PRIVATEINCLUDE)/cups; \
+	fi
 
 
 #
@@ -463,18 +473,6 @@ libcupsimage.a:	$(IMAGEOBJS)
 	$(RM) $@
 	$(AR) $(ARFLAGS) $@ $(IMAGEOBJS)
 	$(RANLIB) $@
-
-
-#
-# fuzzipp (dependency on static CUPS library is intentional)
-#
-
-fuzzipp:	fuzzipp.o $(LIBCUPSSTATIC)
-	echo Linking $@...
-	$(LD_CC) $(ARCHFLAGS) $(ALL_LDFLAGS) -o $@ fuzzipp.o $(LINKCUPSSTATIC)
-	$(CODE_SIGN) -s "$(CODE_SIGN_IDENTITY)" $@
-	echo Fuzzing IPP API...
-	./fuzzipp
 
 
 #
@@ -643,8 +641,6 @@ testlang:	testlang.o $(LIBCUPSSTATIC)
 		$(LN) ../../$$po locale/$$lang; \
 	done
 	echo Running language API tests...
-	echo ls -al locale
-	ls -al locale
 	LOCALEDIR=locale ./testlang
 
 
@@ -731,29 +727,33 @@ tlscheck:	tlscheck.o $(LIBCUPSSTATIC)
 #
 
 apihelp:
-	echo "Generating CUPS Programming Manual..."
+	echo Generating CUPS API help files...
 	$(RM) cupspm.xml
 	codedoc --section "Programming" --body cupspm.md \
 		cupspm.xml \
-		array.[ch] auth.c cups.h dest*.c dir.[ch] encode.c file.[ch] \
-		http.h http*.c ipp.h ipp*.c options.c pwg.[ch] \
-		raster.h raster-stubs.c tls-darwin.c usersys.c util.c \
+		auth.c cups.h dest*.c encode.c http.h http*.c ipp.h ipp*.c \
+		options.c tls-darwin.c usersys.c util.c \
 		--coverimage cupspm.png \
 		--epub ../doc/help/cupspm.epub
 	codedoc --section "Programming" --body cupspm.md \
 		cupspm.xml > ../doc/help/cupspm.html
 	$(RM) cupspm.xml
-	echo "Generating Administration APIs help..."
 	codedoc --section "Programming" --title "Administration APIs" \
+		--css ../doc/cups-printable.css \
 		--header api-admin.header --body api-admin.shtml \
 		adminutil.c adminutil.h getdevices.c >../doc/help/api-admin.html
-	echo "Generating PPD API (deprecated) help..."
 	codedoc --section "Programming" --title "PPD API (DEPRECATED)" \
+		--css ../doc/cups-printable.css \
 		--header api-ppd.header --body api-ppd.shtml \
 		ppd.h ppd-*.c raster-interstub.c >../doc/help/api-ppd.html
-	echo "Generating Filter and Backend Programming help..."
+	codedoc --section "Programming" --title "Raster API" \
+		--css ../doc/cups-printable.css \
+		--header api-raster.header --body api-raster.shtml \
+		../cups/raster.h raster-stubs.c \
+		>../doc/help/api-raster.html
 	codedoc --section "Programming" \
 		--title "Filter and Backend Programming" \
+		--css ../doc/cups-printable.css \
 		--header api-filter.header --body api-filter.shtml \
 		backchannel.c backend.h backend.c sidechannel.c sidechannel.h \
 		>../doc/help/api-filter.html

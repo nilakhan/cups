@@ -1,7 +1,7 @@
 /*
  * snprintf functions for CUPS.
  *
- * Copyright © 2021 by OpenPrinting
+ * Copyright © 2021 by Michael R Sweet
  * Copyright © 2007-2019 by Apple Inc.
  * Copyright © 1997-2007 by Easy Software Products.
  *
@@ -16,7 +16,7 @@
 #include "string-private.h"
 
 
-#ifndef HAVE_VSNPRINTF
+//#ifndef HAVE_VSNPRINTF
 /*
  * '_cups_vsnprintf()' - Format a string into a fixed size buffer.
  */
@@ -327,10 +327,10 @@ _cups_vsnprintf(char       *buffer,	/* O - Output buffer */
 
   return (bytes);
 }
-#endif /* !HAVE_VSNPRINT */
+//#endif /* !HAVE_VSNPRINT */
 
 
-#ifndef HAVE_SNPRINTF
+//#ifndef HAVE_SNPRINTF
 /*
  * '_cups_snprintf()' - Format a string into a fixed size buffer.
  */
@@ -351,4 +351,4 @@ _cups_snprintf(char       *buffer,	/* O - Output buffer */
 
   return (bytes);
 }
-#endif /* !HAVE_SNPRINTF */
+//#endif /* !HAVE_SNPRINTF */
