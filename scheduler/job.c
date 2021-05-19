@@ -1012,7 +1012,6 @@ cupsdContinueJob(cupsd_job_t *job)	/* I - Job */
       }
     }
   }
-  snprintf(rip_max_cache, sizeof(rip_max_cache), "RIP_MAX_CACHE=%s", RIPCache);
 
   if (job->printer->num_auth_info_required == 1)
     snprintf(auth_info_required, sizeof(auth_info_required),
@@ -2179,11 +2178,8 @@ cupsdSaveAllJobs(void)
 {
   int		i;			/* Looping var */
   cups_file_t	*fp;			/* job.cache file */
-  char		filename[1024],		/* job.cache filename */
-		temp[1024];		/* Temporary string */
+  char		filename[1024];		/* job.cache filename */
   cupsd_job_t	*job;			/* Current job */
-  time_t	curtime;		/* Current time */
-  struct tm	curdate;		/* Current date */
 
 
   snprintf(filename, sizeof(filename), "%s/job.cache", CacheDir);
@@ -2195,10 +2191,6 @@ cupsdSaveAllJobs(void)
  /*
   * Write a small header to the file...
   */
-
-  time(&curtime);
-  localtime_r(&curtime, &curdate);
-  strftime(temp, sizeof(temp) - 1, "%Y-%m-%d %H:%M", &curdate);
 
   cupsFilePuts(fp, "# Job cache file for " CUPS_SVERSION "\n");
   cupsFilePrintf(fp, "# Written by cupsd\n");

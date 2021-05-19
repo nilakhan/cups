@@ -1,10 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommand>
-    </LocalDebuggerCommand>
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerWorkingDirectory>C:\Users\gakonano\source\repos\UP.Service\tools\ipptool-github\vcnet\x64\Debug</LocalDebuggerWorkingDirectory>
-    <LocalDebuggerCommandArguments>-t https://print.print.microsoft.com/printers/10c9e1f3-efcb-4a8a-aefa-7547787380e9 ..\..\..\test\UniversalPrintPrinterAttributes.test</LocalDebuggerCommandArguments>
-  </PropertyGroup>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
 </Project>

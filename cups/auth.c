@@ -90,6 +90,7 @@ static void	cups_gss_printf(OM_uint32 major_status, OM_uint32 minor_status,
 #    define	cups_gss_printf(major, minor, message)
 #  endif /* DEBUG */
 #endif /* HAVE_GSSAPI */
+static int	cups_is_local_connection(http_t *http);
 static int	cups_local_auth(http_t *http);
 
 
@@ -174,10 +175,10 @@ cupsDoAuthentication(
     DEBUG_printf(("2cupsDoAuthentication: Trying scheme \"%s\"...", scheme));
 
 #ifdef HAVE_GSSAPI
-    if (!_cups_strcasecmp(scheme, "Negotiate"))
+    if (!_cups_strcasecmp(scheme, "Negotiate") && !cups_is_local_connection(http))
     {
      /*
-      * Kerberos authentication...
+      * Kerberos authentication to remote server...
       */
 
       int gss_status;			/* Auth status */
@@ -201,7 +202,9 @@ cupsDoAuthentication(
     }
     else
 #endif /* HAVE_GSSAPI */
-    if (_cups_strcasecmp(scheme, "Basic") && _cups_strcasecmp(scheme, "Digest"))
+    if (_cups_strcasecmp(scheme, "Basic") &&
+	_cups_strcasecmp(scheme, "Digest") &&
+	_cups_strcasecmp(scheme, "Negotiate"))
     {
      /*
       * Other schemes not yet supported...
@@ -215,7 +218,7 @@ cupsDoAuthentication(
     * See if we should retry the current username:password...
     */
 
-    if ((http->digest_tries > 1 || !http->userpass[0]) && (!_cups_strcasecmp(scheme, "Basic") || (!_cups_strcasecmp(scheme, "Digest"))))
+    if (http->digest_tries > 1 || !http->userpass[0])
     {
      /*
       * Nope - get a new password from the user...
@@ -295,73 +298,19 @@ cupsDoAuthentication(
     }
   }
 
-#ifdef WIN32
-#ifdef UniversalPrint
-  static int retry = 0;
-#define TokenMaxSize 8192
-  const char* TokenGeneratorApp = "GetAADToken.exe";     // The app that requests for token.
-  const char* TokenFileName = "token.txt";
-  char AADToken[TokenMaxSize];   // The buffer that stores the token.
-
-  if (retry++ < 1)  // 1 try is sufficient.
+  if (http->authstring && http->authstring[0])
   {
-      // Run the app which saves the token in file.   system() returns when app has been completed.
-      int status = system(TokenGeneratorApp);
-      if (status != 0)  // GetAADToken returns 0 if successful.
-      {
-          DEBUG_printf(("1cupsDoAuthentication: Token generator failed.\n"));
-          return (-1);
-      }
+    DEBUG_printf(("1cupsDoAuthentication: authstring=\"%s\".", http->authstring));
 
-      // Read the token.
-      FILE* fileStream = fopen(TokenFileName, "r");
-      if (fileStream == NULL)
-      {
-          DEBUG_printf(("1cupsDoAuthentication: unable to find token file.\n"));
-          return (-1);
-      }
-
-      if (fgets(AADToken, TokenMaxSize, fileStream) != NULL)
-      {
-          httpSetAuthString(http, "Bearer", AADToken);
-          fclose(fileStream);
-          // keep the token file around until it has expired.
-          return (0);
-      }
-      else
-      {
-          DEBUG_printf(("1cupsDoAuthentication: failed to read token file.\n"));
-          return (-1);
-      }
-  }
-  else
-
-  {
-      DEBUG_puts("1cupsDoAuthentication: No supported schemes.");
-      http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
-
-      return (-1);
-  }
-
-  DEBUG_printf(("1cupsDoAuthentication: authstring=\"%s\".", http->authstring));
-
-  return (0);
-#else
-  if (http->authstring)
-  {
-      DEBUG_printf(("1cupsDoAuthentication: authstring=\"%s\".", http->authstring));
-
-      return (0);
+    return (0);
   }
   else
   {
-      DEBUG_puts("1cupsDoAuthentication: No supported schemes.");
-      http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+    DEBUG_puts("1cupsDoAuthentication: No supported schemes.");
+    http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
 
-      return (-1);
+    return (-1);
   }
-#endif /* UniversalPrint */
-#endif /* Win32 */
 }
 
 
@@ -970,6 +919,14 @@ cups_gss_printf(OM_uint32  major_status,/* I - Major status code */
 #  endif /* DEBUG */
 #endif /* HAVE_GSSAPI */
 
+static int				/* O - 0 if not a local connection */
+					/*     1  if local connection */
+cups_is_local_connection(http_t *http)	/* I - HTTP connection to server */
+{
+  if (!httpAddrLocalhost(http->hostaddr) && _cups_strcasecmp(http->hostname, "localhost") != 0)
+    return 0;
+  return 1;
+}
 
 /*
  * 'cups_local_auth()' - Get the local authorization certificate if
@@ -1012,7 +969,7 @@ cups_local_auth(http_t *http)		/* I - HTTP connection to server */
   * See if we are accessing localhost...
   */
 
-  if (!httpAddrLocalhost(http->hostaddr) && _cups_strcasecmp(http->hostname, "localhost") != 0)
+  if (!cups_is_local_connection(http))
   {
     DEBUG_puts("8cups_local_auth: Not a local connection!");
     return (1);
@@ -1085,11 +1042,6 @@ cups_local_auth(http_t *http)		/* I - HTTP connection to server */
    */
   }
 #  endif /* HAVE_AUTHORIZATION_H */
-
-#  ifdef HAVE_GSSAPI
-  if (cups_auth_find(www_auth, "Negotiate"))
-    return (1);
-#  endif /* HAVE_GSSAPI */
 
 #  if defined(SO_PEERCRED) && defined(AF_LOCAL)
  /*
