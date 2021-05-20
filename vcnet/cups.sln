@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28010.2036
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31205.134
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libcups2", "libcups2.vcxproj", "{CB4AA6F2-3E84-45BE-B505-95CD375E8BE3}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -37,6 +37,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ippeveprinter", "ippeveprin
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dnssdstub", "dnssdstub.vcxproj", "{C0899B3A-43E7-4BC3-A785-659E1FD2EA83}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetAADToken", "..\GetAADToken\GetAADToken.csproj", "{023EC7E9-71AC-4136-AE60-FB2E369C6BDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -80,6 +82,10 @@ Global
 		{C0899B3A-43E7-4BC3-A785-659E1FD2EA83}.Debug|x64.Build.0 = Debug|x64
 		{C0899B3A-43E7-4BC3-A785-659E1FD2EA83}.Release|x64.ActiveCfg = Release|x64
 		{C0899B3A-43E7-4BC3-A785-659E1FD2EA83}.Release|x64.Build.0 = Release|x64
+		{023EC7E9-71AC-4136-AE60-FB2E369C6BDA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{023EC7E9-71AC-4136-AE60-FB2E369C6BDA}.Debug|x64.Build.0 = Debug|Any CPU
+		{023EC7E9-71AC-4136-AE60-FB2E369C6BDA}.Release|x64.ActiveCfg = Release|Any CPU
+		{023EC7E9-71AC-4136-AE60-FB2E369C6BDA}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
