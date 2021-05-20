@@ -190,6 +190,7 @@ extern "C" {
 #  define CUPS_SIDES_TWO_SIDED_PORTRAIT	"two-sided-long-edge"
 #  define CUPS_SIDES_TWO_SIDED_LANDSCAPE "two-sided-short-edge"
 
+#  define UniversalPrint 1
 
 /*
  * Types and structures...

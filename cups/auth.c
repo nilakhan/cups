@@ -105,214 +105,265 @@ static int	cups_local_auth(http_t *http);
 
 int					/* O - 0 on success, -1 on error */
 cupsDoAuthentication(
-    http_t     *http,			/* I - Connection to server or @code CUPS_HTTP_DEFAULT@ */
-    const char *method,			/* I - Request method ("GET", "POST", "PUT") */
-    const char *resource)		/* I - Resource path */
+    http_t* http,			/* I - Connection to server or @code CUPS_HTTP_DEFAULT@ */
+    const char* method,			/* I - Request method ("GET", "POST", "PUT") */
+    const char* resource)		/* I - Resource path */
 {
-  const char	*password,		/* Password string */
-		*www_auth,		/* WWW-Authenticate header */
-		*schemedata;		/* Scheme-specific data */
-  char		scheme[256],		/* Scheme name */
-		prompt[1024];		/* Prompt for user */
-  int		localauth;		/* Local authentication result */
-  _cups_globals_t *cg;			/* Global data */
+    const char* password,		/* Password string */
+        * www_auth,		/* WWW-Authenticate header */
+        * schemedata;		/* Scheme-specific data */
+    char		scheme[256],		/* Scheme name */
+        prompt[1024];		/* Prompt for user */
+    int		localauth;		/* Local authentication result */
+    _cups_globals_t* cg;			/* Global data */
 
 
-  DEBUG_printf(("cupsDoAuthentication(http=%p, method=\"%s\", resource=\"%s\")", (void *)http, method, resource));
+    DEBUG_printf(("cupsDoAuthentication(http=%p, method=\"%s\", resource=\"%s\")", (void*)http, method, resource));
 
-  if (!http)
-    http = _cupsConnect();
+    if (!http)
+        http = _cupsConnect();
 
-  if (!http || !method || !resource)
-    return (-1);
+    if (!http || !method || !resource)
+        return (-1);
 
-  DEBUG_printf(("2cupsDoAuthentication: digest_tries=%d, userpass=\"%s\"",
-                http->digest_tries, http->userpass));
-  DEBUG_printf(("2cupsDoAuthentication: WWW-Authenticate=\"%s\"",
-                httpGetField(http, HTTP_FIELD_WWW_AUTHENTICATE)));
+    DEBUG_printf(("2cupsDoAuthentication: digest_tries=%d, userpass=\"%s\"",
+        http->digest_tries, http->userpass));
+    DEBUG_printf(("2cupsDoAuthentication: WWW-Authenticate=\"%s\"",
+        httpGetField(http, HTTP_FIELD_WWW_AUTHENTICATE)));
 
- /*
-  * Clear the current authentication string...
-  */
+    /*
+     * Clear the current authentication string...
+     */
 
-  httpSetAuthString(http, NULL, NULL);
+    httpSetAuthString(http, NULL, NULL);
 
- /*
-  * See if we can do local authentication...
-  */
+    /*
+     * See if we can do local authentication...
+     */
 
-  if (http->digest_tries < 3)
-  {
-    if ((localauth = cups_local_auth(http)) == 0)
+    if (http->digest_tries < 3)
     {
-      DEBUG_printf(("2cupsDoAuthentication: authstring=\"%s\"",
-                    http->authstring));
+        if ((localauth = cups_local_auth(http)) == 0)
+        {
+            DEBUG_printf(("2cupsDoAuthentication: authstring=\"%s\"",
+                http->authstring));
 
-      if (http->status == HTTP_STATUS_UNAUTHORIZED)
-	http->digest_tries ++;
+            if (http->status == HTTP_STATUS_UNAUTHORIZED)
+                http->digest_tries++;
 
-      return (0);
+            return (0);
+        }
+        else if (localauth == -1)
+        {
+            http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+            return (-1);			/* Error or canceled */
+        }
     }
-    else if (localauth == -1)
+
+    /*
+     * Nope, loop through the authentication schemes to find the first we support.
+     */
+
+    www_auth = httpGetField(http, HTTP_FIELD_WWW_AUTHENTICATE);
+
+    for (schemedata = cups_auth_scheme(www_auth, scheme, sizeof(scheme)); schemedata; schemedata = cups_auth_scheme(schemedata + strlen(scheme), scheme, sizeof(scheme)))
     {
-      http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
-      return (-1);			/* Error or canceled */
-    }
-  }
+        /*
+         * Check the scheme name...
+         */
 
- /*
-  * Nope, loop through the authentication schemes to find the first we support.
-  */
-
-  www_auth = httpGetField(http, HTTP_FIELD_WWW_AUTHENTICATE);
-
-  for (schemedata = cups_auth_scheme(www_auth, scheme, sizeof(scheme)); schemedata; schemedata = cups_auth_scheme(schemedata + strlen(scheme), scheme, sizeof(scheme)))
-  {
-   /*
-    * Check the scheme name...
-    */
-
-    DEBUG_printf(("2cupsDoAuthentication: Trying scheme \"%s\"...", scheme));
+        DEBUG_printf(("2cupsDoAuthentication: Trying scheme \"%s\"...", scheme));
 
 #ifdef HAVE_GSSAPI
-    if (!_cups_strcasecmp(scheme, "Negotiate") && !cups_is_local_connection(http))
+        if (!_cups_strcasecmp(scheme, "Negotiate"))
+        {
+            /*
+             * Kerberos authentication...
+             */
+
+            int gss_status;			/* Auth status */
+
+            if ((gss_status = _cupsSetNegotiateAuthString(http, method, resource)) == CUPS_GSS_FAIL)
+            {
+                DEBUG_puts("1cupsDoAuthentication: Negotiate failed.");
+                http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+                return (-1);
+            }
+            else if (gss_status == CUPS_GSS_NONE)
+            {
+                DEBUG_puts("2cupsDoAuthentication: No credentials for Negotiate.");
+                continue;
+            }
+            else
+            {
+                DEBUG_puts("2cupsDoAuthentication: Using Negotiate.");
+                break;
+            }
+        }
+        else
+#endif /* HAVE_GSSAPI */
+            if (_cups_strcasecmp(scheme, "Basic") && _cups_strcasecmp(scheme, "Digest"))
+            {
+                /*
+                 * Other schemes not yet supported...
+                 */
+
+                DEBUG_printf(("2cupsDoAuthentication: Scheme \"%s\" not yet supported.", scheme));
+                continue;
+            }
+
+        /*
+         * See if we should retry the current username:password...
+         */
+
+        if ((http->digest_tries > 1 || !http->userpass[0]) && (!_cups_strcasecmp(scheme, "Basic") || (!_cups_strcasecmp(scheme, "Digest"))))
+        {
+            /*
+             * Nope - get a new password from the user...
+             */
+
+            char default_username[HTTP_MAX_VALUE];
+            /* Default username */
+
+            cg = _cupsGlobals();
+
+            if (!cg->lang_default)
+                cg->lang_default = cupsLangDefault();
+
+            if (cups_auth_param(schemedata, "username", default_username, sizeof(default_username)))
+                cupsSetUser(default_username);
+
+            snprintf(prompt, sizeof(prompt), _cupsLangString(cg->lang_default, _("Password for %s on %s? ")), cupsUser(), http->hostname[0] == '/' ? "localhost" : http->hostname);
+
+            http->digest_tries = _cups_strncasecmp(scheme, "Digest", 6) != 0;
+            http->userpass[0] = '\0';
+
+            if ((password = cupsGetPassword2(prompt, http, method, resource)) == NULL)
+            {
+                DEBUG_puts("1cupsDoAuthentication: User canceled password request.");
+                http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+                return (-1);
+            }
+
+            snprintf(http->userpass, sizeof(http->userpass), "%s:%s", cupsUser(), password);
+        }
+        else if (http->status == HTTP_STATUS_UNAUTHORIZED)
+            http->digest_tries++;
+
+        if (http->status == HTTP_STATUS_UNAUTHORIZED && http->digest_tries >= 3)
+        {
+            DEBUG_printf(("1cupsDoAuthentication: Too many authentication tries (%d)", http->digest_tries));
+
+            http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+            return (-1);
+        }
+
+        /*
+         * Got a password; encode it for the server...
+         */
+
+        if (!_cups_strcasecmp(scheme, "Basic"))
+        {
+            /*
+             * Basic authentication...
+             */
+
+            char	encode[256];		/* Base64 buffer */
+
+            DEBUG_puts("2cupsDoAuthentication: Using Basic.");
+            httpEncode64_2(encode, sizeof(encode), http->userpass, (int)strlen(http->userpass));
+            httpSetAuthString(http, "Basic", encode);
+            break;
+        }
+        else if (!_cups_strcasecmp(scheme, "Digest"))
+        {
+            /*
+             * Digest authentication...
+             */
+
+            char nonce[HTTP_MAX_VALUE];	/* nonce="xyz" string */
+
+            cups_auth_param(schemedata, "algorithm", http->algorithm, sizeof(http->algorithm));
+            cups_auth_param(schemedata, "opaque", http->opaque, sizeof(http->opaque));
+            cups_auth_param(schemedata, "nonce", nonce, sizeof(nonce));
+            cups_auth_param(schemedata, "realm", http->realm, sizeof(http->realm));
+
+            if (_httpSetDigestAuthString(http, nonce, method, resource))
+            {
+                DEBUG_puts("2cupsDoAuthentication: Using Digest.");
+                break;
+            }
+        }
+    }
+
+#ifdef WIN32
+#ifdef UniversalPrint
+    static int retry = 0;
+#define TokenMaxSize 8192
+    const char* TokenGeneratorApp = "GetAADToken.exe";     // The app that requests for token.
+    const char* TokenFileName = "token.txt";
+    char AADToken[TokenMaxSize];   // The buffer that stores the token.
+
+    if (retry++ < 1)  // 1 try is sufficient.
     {
-     /*
-      * Kerberos authentication to remote server...
-      */
+        // Run the app which saves the token in file.   system() returns when app has been completed.
+        int status = system(TokenGeneratorApp);
+        if (status != 0)  // GetAADToken returns 0 if successful.
+        {
+            DEBUG_printf(("1cupsDoAuthentication: Token generator failed.\n"));
+            return (-1);
+        }
 
-      int gss_status;			/* Auth status */
+        // Read the token.
+        FILE* fileStream = fopen(TokenFileName, "r");
+        if (fileStream == NULL)
+        {
+            DEBUG_printf(("1cupsDoAuthentication: unable to find token file.\n"));
+            return (-1);
+        }
 
-      if ((gss_status = _cupsSetNegotiateAuthString(http, method, resource)) == CUPS_GSS_FAIL)
-      {
-        DEBUG_puts("1cupsDoAuthentication: Negotiate failed.");
-	http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
-	return (-1);
-      }
-      else if (gss_status == CUPS_GSS_NONE)
-      {
-        DEBUG_puts("2cupsDoAuthentication: No credentials for Negotiate.");
-        continue;
-      }
-      else
-      {
-        DEBUG_puts("2cupsDoAuthentication: Using Negotiate.");
-        break;
-      }
+        if (fgets(AADToken, TokenMaxSize, fileStream) != NULL)
+        {
+            httpSetAuthString(http, "Bearer", AADToken);
+            fclose(fileStream);
+            // keep the token file around until it has expired.
+            return (0);
+        }
+        else
+        {
+            DEBUG_printf(("1cupsDoAuthentication: failed to read token file.\n"));
+            return (-1);
+        }
     }
     else
-#endif /* HAVE_GSSAPI */
-    if (_cups_strcasecmp(scheme, "Basic") &&
-	_cups_strcasecmp(scheme, "Digest") &&
-	_cups_strcasecmp(scheme, "Negotiate"))
-    {
-     /*
-      * Other schemes not yet supported...
-      */
 
-      DEBUG_printf(("2cupsDoAuthentication: Scheme \"%s\" not yet supported.", scheme));
-      continue;
+    {
+        DEBUG_puts("1cupsDoAuthentication: No supported schemes.");
+        http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+
+        return (-1);
     }
 
-   /*
-    * See if we should retry the current username:password...
-    */
-
-    if (http->digest_tries > 1 || !http->userpass[0])
-    {
-     /*
-      * Nope - get a new password from the user...
-      */
-
-      char default_username[HTTP_MAX_VALUE];
-					/* Default username */
-
-      cg = _cupsGlobals();
-
-      if (!cg->lang_default)
-	cg->lang_default = cupsLangDefault();
-
-      if (cups_auth_param(schemedata, "username", default_username, sizeof(default_username)))
-	cupsSetUser(default_username);
-
-      snprintf(prompt, sizeof(prompt), _cupsLangString(cg->lang_default, _("Password for %s on %s? ")), cupsUser(), http->hostname[0] == '/' ? "localhost" : http->hostname);
-
-      http->digest_tries  = _cups_strncasecmp(scheme, "Digest", 6) != 0;
-      http->userpass[0]   = '\0';
-
-      if ((password = cupsGetPassword2(prompt, http, method, resource)) == NULL)
-      {
-        DEBUG_puts("1cupsDoAuthentication: User canceled password request.");
-	http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
-	return (-1);
-      }
-
-      snprintf(http->userpass, sizeof(http->userpass), "%s:%s", cupsUser(), password);
-    }
-    else if (http->status == HTTP_STATUS_UNAUTHORIZED)
-      http->digest_tries ++;
-
-    if (http->status == HTTP_STATUS_UNAUTHORIZED && http->digest_tries >= 3)
-    {
-      DEBUG_printf(("1cupsDoAuthentication: Too many authentication tries (%d)", http->digest_tries));
-
-      http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
-      return (-1);
-    }
-
-   /*
-    * Got a password; encode it for the server...
-    */
-
-    if (!_cups_strcasecmp(scheme, "Basic"))
-    {
-     /*
-      * Basic authentication...
-      */
-
-      char	encode[256];		/* Base64 buffer */
-
-      DEBUG_puts("2cupsDoAuthentication: Using Basic.");
-      httpEncode64_2(encode, sizeof(encode), http->userpass, (int)strlen(http->userpass));
-      httpSetAuthString(http, "Basic", encode);
-      break;
-    }
-    else if (!_cups_strcasecmp(scheme, "Digest"))
-    {
-     /*
-      * Digest authentication...
-      */
-
-      char nonce[HTTP_MAX_VALUE];	/* nonce="xyz" string */
-
-      cups_auth_param(schemedata, "algorithm", http->algorithm, sizeof(http->algorithm));
-      cups_auth_param(schemedata, "opaque", http->opaque, sizeof(http->opaque));
-      cups_auth_param(schemedata, "nonce", nonce, sizeof(nonce));
-      cups_auth_param(schemedata, "realm", http->realm, sizeof(http->realm));
-
-      if (_httpSetDigestAuthString(http, nonce, method, resource))
-      {
-	DEBUG_puts("2cupsDoAuthentication: Using Digest.");
-        break;
-      }
-    }
-  }
-
-  if (http->authstring && http->authstring[0])
-  {
     DEBUG_printf(("1cupsDoAuthentication: authstring=\"%s\".", http->authstring));
 
     return (0);
-  }
-  else
-  {
-    DEBUG_puts("1cupsDoAuthentication: No supported schemes.");
-    http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+#else
+    if (http->authstring)
+    {
+        DEBUG_printf(("1cupsDoAuthentication: authstring=\"%s\".", http->authstring));
 
-    return (-1);
-  }
+        return (0);
+    }
+    else
+    {
+        DEBUG_puts("1cupsDoAuthentication: No supported schemes.");
+        http->status = HTTP_STATUS_CUPS_AUTHORIZATION_CANCELED;
+
+        return (-1);
+    }
+#endif /* UniversalPrint */
+#endif /* Win32 */
 }
-
 
 #ifdef HAVE_GSSAPI
 /*
