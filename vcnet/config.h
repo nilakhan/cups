@@ -336,12 +336,19 @@ typedef unsigned long useconds_t;
 
 
 /*
+ * Do we have Universal Print?
+*/
+
+# define UniversalPrint 1
+
+/*
  * Do we have the (v)snprintf() functions?
  */
 
+#ifndef UniversalPrint
 #define HAVE_SNPRINTF 1
 #define HAVE_VSNPRINTF 1
-
+#endif
 
 /*
  * What signal functions to use?
@@ -722,7 +729,6 @@ typedef unsigned long useconds_t;
  */
 
 /* #undef HAVE_TCPD_H */
-
 
 /*
  * Do we have <iconv.h>?
