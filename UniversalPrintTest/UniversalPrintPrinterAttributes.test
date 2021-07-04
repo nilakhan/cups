@@ -56,38 +56,12 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
 	EXPECT media-col-default OF-TYPE collection IN-GROUP printer-attributes-tag COUNT 1
 	EXPECT media-col-supported OF-TYPE keyword IN-GROUP printer-attributes-tag
 	
-	EXPECT media-col-supported WITH-VALUE media-back-coating DEFINE-MATCH HAVE_MEDIA_BACK_COATING
-	EXPECT media-col-supported WITH-VALUE media-color DEFINE-MATCH HAVE_MEDIA_COLOR
-	EXPECT media-col-supported WITH-VALUE media-front-coating DEFINE-MATCH HAVE_MEDIA_FRONT_COATING
-	EXPECT media-col-supported WITH-VALUE media-grain DEFINE-MATCH HAVE_MEDIA_GRAIN
-	EXPECT media-col-supported WITH-VALUE media-hole-count DEFINE-MATCH HAVE_MEDIA_HOLE_COUNT
-	EXPECT media-col-supported WITH-VALUE media-info DEFINE-MATCH HAVE_MEDIA_INFO
-	EXPECT media-col-supported WITH-VALUE media-key DEFINE-MATCH HAVE_MEDIA_KEY
-	EXPECT media-col-supported WITH-VALUE media-order-count DEFINE-MATCH HAVE_MEDIA_ORDER_COUNT
-	EXPECT media-col-supported WITH-VALUE media-pre-printed DEFINE-MATCH HAVE_MEDIA_PRE_PRINTED
-	EXPECT media-col-supported WITH-VALUE media-recycled DEFINE-MATCH HAVE_MEDIA_RECYCLED
-	EXPECT media-col-supported WITH-VALUE media-size DEFINE-MATCH HAVE_MEDIA_SIZE
-	EXPECT media-col-supported WITH-VALUE media-tooth DEFINE-MATCH HAVE_MEDIA_TOOTH
-	EXPECT media-col-supported WITH-VALUE media-type DEFINE-MATCH HAVE_MEDIA_TYPE
-	EXPECT media-col-supported WITH-VALUE media-weight-metric DEFINE-MATCH HAVE_MEDIA_WEIGHT_METRIC
-
-	EXPECT media-source-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag
 	EXPECT media-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag
-	EXPECT media-back-coating-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_BACK_COATING
-    EXPECT media-color-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_COLOR
-    EXPECT media-front-coating-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_FRONT_COATING
-    EXPECT media-grain-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_GRAIN
-    EXPECT media-hole-count-supported OF-TYPE rangeOfInteger IN-GROUP printer-attributes-tag WITH-VALUE >-1 IF-DEFINED HAVE_MEDIA_HOLE_COUNT
-    EXPECT media-info-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_INFO
-    EXPECT media-key-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_KEY
-    EXPECT media-order-count-supported OF-TYPE rangeOfInteger IN-GROUP printer-attributes-tag WITH-VALUE >0 IF-DEFINED HAVE_MEDIA_ORDER_COUNT
-    EXPECT media-pre-printed-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_PRE_PRINTED
-    EXPECT media-recycled-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_RECYCLED
-    EXPECT media-size-supported OF-TYPE collection IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_SIZE
-    EXPECT media-tooth-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-DEFINED HAVE_MEDIA_TOOTH
+	
+	EXPECT media-col-database/media-size OF-TYPE collection
+	EXPECT media-col-database/media-source-feed-direction OF-TYPE keyword
     EXPECT media-col-database/media-type OF-TYPE keyword|name DEFINE-MATCH MEDIA_COL_DATABASE_HAS_MEDIA_TYPE
 	EXPECT media-type-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-NOT-DEFINED MEDIA_COL_DATABASE_HAS_MEDIA_TYPE
-	EXPECT media-weight-metric-supported OF-TYPE rangeOfInteger IN-GROUP printer-attributes-tag WITH-VALUE >-1 IF-DEFINED HAVE_MEDIA_WEIGHT_METRIC
 
 	EXPECT ?number-up-default OF-TYPE integer IN-GROUP printer-attributes-tag COUNT 1 WITH-VALUE >0
 	EXPECT ?number-up-supported OF-TYPE integer|rangeOfInteger IN-GROUP printer-attributes-tag WITH-VALUE >0
@@ -106,7 +80,8 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
 	EXPECT pclm-strip-height-supported OF-TYPE integer IN-GROUP printer-attributes-tag IF-DEFINED APPLICATION_PCLM_SUPPORTED
 
 	EXPECT print-color-mode-default OF-TYPE keyword IN-GROUP printer-attributes-tag COUNT 1 WITH-VALUE-FROM print-color-mode-supported
-	EXPECT print-color-mode-supported OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-ALL-VALUES "/^(auto|auto-monochrome|bi-level|color|highlight|monochrome|process-bi-level|process-monochrome)$/"
+	EXPECT print-color-mode-supported OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-ALL-VALUES "/^(auto|auto-monochrome|bi-level|monochrome|color|highlight|process-bi-level|process-monochrome)$/"
+	EXPECT print-color-mode-supported OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-VALUE "monochrome"
 
 	EXPECT printer-is-accepting-jobs OF-TYPE boolean IN-GROUP printer-attributes-tag COUNT 1
 	EXPECT pdf-k-octets-supported OF-TYPE rangeOfInteger IN-GROUP printer-attributes-tag IF-DEFINED APPLICATION_PDF_SUPPORTED
@@ -142,7 +117,7 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
 	EXPECT ipp-features-supported OF-TYPE keyword IN-GROUP printer-attributes-tag COUNT 1 DEFINE-MATCH IPP_FEATURES_HAS_SINGLE_VALUE
 	EXPECT ipp-features-supported OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-VALUE none IF-DEFINED IPP_FEATURES_HAS_SINGLE_VALUE
 
-	EXPECT operations-supported OF-TYPE enum IN-GROUP printer-attributes-tag WITH-VALUE >0 WITH-VALUE <103
+	EXPECT operations-supported OF-TYPE enum IN-GROUP printer-attributes-tag
 
 	EXPECT pwg-raster-document-resolution-supported OF-TYPE resolution IN-GROUP printer-attributes-tag IF-DEFINED IMAGE_PWG_RASTER_SUPPORTED
 	EXPECT pwg-raster-document-sheet-back OF-TYPE keyword IN-GROUP printer-attributes-tag IF-DEFINED IMAGE_PWG_RASTER_SUPPORTED
