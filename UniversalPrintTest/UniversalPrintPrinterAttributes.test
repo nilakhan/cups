@@ -44,7 +44,7 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
     EXPECT copies-supported OF-TYPE rangeOfInteger IN-GROUP printer-attributes-tag
 
 	EXPECT document-format-default OF-TYPE mimeMediaType IN-GROUP printer-attributes-tag COUNT 1 WITH-VALUE-FROM document-format-supported
-    EXPECT document-format-supported OF-TYPE mimeMediaType IN-GROUP printer-attributes-tag
+        EXPECT document-format-supported OF-TYPE mimeMediaType IN-GROUP printer-attributes-tag
 	EXPECT document-format-supported OF-TYPE mimeMediaType IN-GROUP printer-attributes-tag WITH-VALUE "application/PCLm" DEFINE-MATCH APPLICATION_PCLM_SUPPORTED
 	EXPECT document-format-supported OF-TYPE mimeMediaType IN-GROUP printer-attributes-tag WITH-VALUE "application/pdf" DEFINE-MATCH APPLICATION_PDF_SUPPORTED
 	EXPECT document-format-supported OF-TYPE mimeMediaType IN-GROUP printer-attributes-tag WITH-VALUE "image/pwg-raster" DEFINE-MATCH IMAGE_PWG_RASTER_SUPPORTED
