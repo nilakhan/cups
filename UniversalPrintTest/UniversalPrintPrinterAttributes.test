@@ -59,7 +59,7 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
 	EXPECT media-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag
 	
 	EXPECT media-col-database/media-size OF-TYPE collection
-	EXPECT media-col-database/media-source-feed-direction OF-TYPE keyword
+	EXPECT media-col-database/media-source-properties/media-source-feed-direction OF-TYPE keyword
     EXPECT media-col-database/media-type OF-TYPE keyword|name DEFINE-MATCH MEDIA_COL_DATABASE_HAS_MEDIA_TYPE
 	EXPECT media-type-supported OF-TYPE keyword|name IN-GROUP printer-attributes-tag IF-NOT-DEFINED MEDIA_COL_DATABASE_HAS_MEDIA_TYPE
 
