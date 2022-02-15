@@ -30,7 +30,7 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
 # Required by: RFC 8011 section 5.2.1
 {
 
-    NAME "PWG 5100.14 section 5.1/5.2 - Required Operations and Attributes"
+        NAME "PWG 5100.14 section 5.1/5.2 - Required Operations and Attributes"
 	OPERATION Get-Printer-Attributes
 	GROUP operation-attributes-tag
 	ATTR charset attributes-charset utf-8
@@ -96,9 +96,11 @@ DEFINE IPP_URI_SCHEME "/^ipps?://.+$$/"
 
 	EXPECT printer-resolution-default OF-TYPE resolution IN-GROUP printer-attributes-tag COUNT 1 WITH-VALUE-FROM printer-resolution-supported
 	EXPECT printer-resolution-supported OF-TYPE resolution IN-GROUP printer-attributes-tag
-	EXPECT print-scaling-default OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-VALUE-FROM print-scaling-supported IF-DEFINED APPLICATION_PDF_SUPPORTED|IMAGE_PWG_RASTER_SUPPORTED
-	EXPECT print-scaling-supported OF-TYPE keyword IN-GROUP printer-attributes-tag IF-DEFINED APPLICATION_PDF_SUPPORTED|IMAGE_PWG_RASTER_SUPPORTED
-
+	EXPECT print-scaling-default OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-VALUE-FROM print-scaling-supported IF-DEFINED APPLICATION_PDF_SUPPORTED
+	EXPECT print-scaling-supported OF-TYPE keyword IN-GROUP printer-attributes-tag IF-DEFINED APPLICATION_PDF_SUPPORTED
+	EXPECT print-scaling-default OF-TYPE keyword IN-GROUP printer-attributes-tag WITH-VALUE-FROM print-scaling-supported IF-DEFINED IMAGE_PWG_RASTER_SUPPORTED
+	EXPECT print-scaling-supported OF-TYPE keyword IN-GROUP printer-attributes-tag IF-DEFINED IMAGE_PWG_RASTER_SUPPORTED
+	
 	EXPECT printer-state OF-TYPE enum IN-GROUP printer-attributes-tag COUNT 1 WITH-VALUE 3,4,5
 	EXPECT printer-state-reasons OF-TYPE keyword IN-GROUP printer-attributes-tag
 	EXPECT printer-location OF-TYPE text IN-GROUP printer-attributes-tag WITH-VALUE "/^.{0,127}$$/"
