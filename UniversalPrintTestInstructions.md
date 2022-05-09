@@ -25,6 +25,10 @@ INSTRUCTIONS TO USE
 8.      The command to use the other test files, such as ipp-1.1.test, is provided in the comment section of their files.
 9.      Besides the attribute test tools in the folder ipptool-github\UniversalPrintTest, there are some example test files provided by CUPS in the folder ipptool-github\examples, which you may also use. Some useful ones might include get-jobs.test and print-job.test.
 
+NOTE: Following condition is not checked by the test due to tool's limitations. Please ensure that the printer attributes conform to this condition: 
+All attributes in media-col-database must be consistent with corresponding media-xxx-supported attribute. 
+For example, if media-col-database/media-type contains "auto" then media-type-supported attribute should also contain "auto". 
+
 TROUBLESHOOTING
 1.      If ipptool hangs when it is run, try renewing the access token of your printer by deleting the token.txt file (located in the same folder where you're running the tool) and re-running the ipptool.
 2.      Double check that in the output after ipptool finishes running, you see the following line in the output:
