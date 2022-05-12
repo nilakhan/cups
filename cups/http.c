@@ -1158,6 +1158,10 @@ httpGets(char   *line,			/* I - Line to read into */
 
     while (http->used == 0)
     {
+      bytes = http_read(http, http->buffer + http->used, (size_t)(HTTP_MAX_BUFFER - http->used));
+      DEBUG_printf(("4httpGets: read " CUPS_LLFMT " bytes.", CUPS_LLCAST bytes));
+      if (bytes == 0)
+      {
      /*
       * No newline; see if there is more data to be read...
       */
@@ -1179,7 +1183,7 @@ httpGets(char   *line,			/* I - Line to read into */
       bytes = http_read(http, http->buffer + http->used, (size_t)(HTTP_MAX_BUFFER - http->used));
 
       DEBUG_printf(("4httpGets: read " CUPS_LLFMT " bytes.", CUPS_LLCAST bytes));
-
+      }
       if (bytes < 0)
       {
        /*
@@ -4079,11 +4083,17 @@ http_read(http_t *http,			/* I - HTTP connection */
           char   *buffer,		/* I - Buffer */
           size_t length)		/* I - Maximum bytes to read */
 {
-  ssize_t	bytes;			/* Bytes read */
+  ssize_t	bytes = 0;			/* Bytes read */
 
 
   DEBUG_printf(("http_read(http=%p, buffer=%p, length=" CUPS_LLFMT ")", (void *)http, (void *)buffer, CUPS_LLCAST length));
 
+#ifdef HAVE_SSL
+  // Check if there are extra rx bytes from SSL decryption (see: _httpTLSRead() pExtraBuffer).
+  if (http->tls)
+      bytes = _httpTLSRead(http, buffer, (int)length);
+#endif /* HAVE_SSL */
+  if (bytes == 0) {
   if (!http->blocking || http->timeout_value > 0.0)
   {
     while (!httpWait(http, http->wait_value))
@@ -4149,6 +4159,7 @@ http_read(http_t *http,			/* I - HTTP connection */
     }
   }
   while (bytes < 0);
+  }
 
   DEBUG_printf(("2http_read: Read " CUPS_LLFMT " bytes into buffer.",
 		CUPS_LLCAST bytes));
